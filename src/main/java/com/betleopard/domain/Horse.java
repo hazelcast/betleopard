@@ -8,7 +8,7 @@ public final class Horse {
     private final String name;
     private final long id;
     
-    static Horse of(final String name, final long id) {
+    public static Horse of(final String name, final long id) {
         return new Horse(name, id);
     }
 

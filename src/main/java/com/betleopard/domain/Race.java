@@ -5,7 +5,6 @@
  */
 package com.betleopard.domain;
 
-import com.sun.org.apache.xalan.internal.lib.ExsltDatetime;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -18,7 +17,7 @@ import java.util.Set;
 public final class Race {
 
     private final long id;
-    private final Map<Horse, Double> odds;
+    private final Map<Horse, Double> odds; // Decimal "Betfair" style odds
     private final LocalDateTime raceTime;
     private final long version;
 
