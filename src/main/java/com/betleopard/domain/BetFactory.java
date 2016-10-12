@@ -1,18 +1,27 @@
 package com.betleopard.domain;
 
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  *
  * @author ben
  */
 public class BetFactory {
-    private static final ThreadLocal<Long> betId = new ThreadLocal<Long>() {
-        @Override
-        protected Long initialValue() {
-            return 0L;
-        }
-    };
 
-    public static Bet newBet() {
+    private static AtomicLong horseID = new AtomicLong(1);
+    private static AtomicLong raceID = new AtomicLong(1);
+
+    public static Leg newLeg() {
         return null;
+    }
+
+    public static Horse newHorse(final String name) {
+        return Horse.of(name, horseID.getAndIncrement());
+    }
+
+    public static Race newRace(final LocalDateTime time, final Map<Horse, Double> earlyPrices) {
+        return Race.of(time, raceID.getAndIncrement(), earlyPrices);
     }
 }

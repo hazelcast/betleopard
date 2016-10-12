@@ -1,20 +1,23 @@
 package com.betleopard.domain;
 
+import java.util.Optional;
+
 /**
  *
  * @author ben
  */
 public class Leg {
-
+    private final Race race;
     private final OddsType oType;
-    private final double odds;
+    private final Optional<Double> odds;
 
-    public Leg(final Opportunity oppo, final Horse runner, final OddsType ot) {
+    public Leg(final Race oppo, final Horse runner, final OddsType ot) {
+        race = oppo;
         oType = ot;
         if (oType == OddsType.FIXED_ODDS) {
-            odds = oppo.getOdds(runner.getID());
+            odds = Optional.of(oppo.getOdds(runner));
         } else {
-            odds = 0.0;
+            odds = Optional.empty();
         }
     }
 }
