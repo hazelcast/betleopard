@@ -78,6 +78,10 @@ public final class Race {
         versions.add(nextVer);
     }
 
+    public LocalDateTime raceTime() {
+        return getCurrentBody().raceTime;
+    }
+
     /**
      *
      * @author ben

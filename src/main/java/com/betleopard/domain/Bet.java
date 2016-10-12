@@ -1,7 +1,9 @@
 package com.betleopard.domain;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -10,22 +12,27 @@ import java.util.Set;
 public class Bet {
 
     private final long id;
-    private final Set<Leg> legs;
-    private final int stake;
+    private final List<Leg> legs;
+    private final double stake;
     private final BetType type;
 
     private Bet(BetBuilder bb) {
         id = bb.id;
-        legs = bb.legs;
         stake = bb.stake;
+        legs = orderLegsByTime(bb.legs, stake);
         type = bb.type;
     }
 
-    public static class BetBuilder implements Builder<Bet> {
+    private static List<Leg> orderLegsByTime(final Set<Leg> legs, final double stake) {
+        return legs.stream()
+                   .sorted((l1, l2) -> l1.getRace().raceTime().isBefore(l2.getRace().raceTime()) ? -1 : 1)
+                   .collect(Collectors.toList());
+    }
 
+    public static class BetBuilder implements Builder<Bet> {
         private long id;
         private Set<Leg> legs = new HashSet<>();
-        private int stake;
+        private double stake;
         private BetType type;
 
         @Override
@@ -38,7 +45,7 @@ public class Bet {
             return this;
         }
 
-        public BetBuilder stake(final int stake) {
+        public BetBuilder stake(final double stake) {
             this.stake = stake;
             return this;
         }
@@ -57,6 +64,18 @@ public class Bet {
             legs = new HashSet<>();
             return this;
         }
-
     }
+    
+    public double payout() {
+        if (legs.size() == 1) {
+            return legs.iterator().next().payout();
+        }
+        
+        double out = 1.0;
+        for (final Leg l : legs) {
+            out *= l.payout();
+        }
+        return out;
+    }
+
 }
