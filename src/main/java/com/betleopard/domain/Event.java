@@ -11,6 +11,6 @@ import java.util.List;
 public class Event {
     private LocalDateTime start;
     private LocalDateTime finish;
-    private final List<Race> races = new ArrayList<>();
+    private final List<Race.RaceBody> races = new ArrayList<>();
     
 }
