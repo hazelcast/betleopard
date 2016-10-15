@@ -1,6 +1,8 @@
 package com.betleopard.domain;
 
+import com.betleopard.JSONSerializable;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -9,7 +11,7 @@ import java.util.*;
  * @author ben
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public final class Race {
+public final class Race implements JSONSerializable {
 
     public static Race of(long raceID) {
         // Look it up in Hazelcast
@@ -56,7 +58,8 @@ public final class Race {
         return current.getOdds(backing);
     }
 
-    private RaceBody getCurrentBody() {
+    @JsonProperty
+    public RaceBody getCurrentVersion() {
         if (versions.isEmpty()) {
             return new RaceBody(id);
         }
@@ -75,7 +78,7 @@ public final class Race {
         if (!hasRun) {
             return Optional.empty();
         }
-        return getCurrentBody().winner;
+        return getCurrentVersion().winner;
     }
 
     public void newOdds(final Map<Horse, Double> book) {
@@ -86,23 +89,25 @@ public final class Race {
     }
 
     public LocalDateTime raceTime() {
-        return getCurrentBody().raceTime;
+        return getCurrentVersion().raceTime;
     }
 
+    @JsonProperty
     public long getID() {
         return id;
     }
 
+    @JsonProperty
     public boolean hasRun() {
         return hasRun;
     }
-    
+
     /**
      *
      * @author ben
      */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static final class RaceBody {
-
         private final long id;
         private final Map<Horse, Double> odds; // Decimal "Betfair" style odds
         private final LocalDateTime raceTime;
@@ -138,12 +143,25 @@ public final class Race {
             return odds.keySet().stream().filter((Horse h) -> h.getID() == id).findFirst().orElse(null);
         }
 
-        //    public double getOdds(int horseID) {
-        //
-        //    }
         public Set<Horse> getRunners() {
             return odds.keySet();
         }
+        
+        // JSON Properties
+        @JsonProperty
+        public Map<Horse, Double> getOdds() {
+            return odds;
+        }
+
+        @JsonProperty
+        public LocalDateTime getRaceTime() {
+            return raceTime;
+        }
+
+        @JsonProperty
+        public long getVersion() {
+            return version;
+        }        
     }
 
     public static class RaceBodyBuilder implements Builder<RaceBody> {
@@ -176,7 +194,7 @@ public final class Race {
 
         public RaceBodyBuilder(final Race race) {
             super();
-            final RaceBody rb = race.getCurrentBody();
+            final RaceBody rb = race.getCurrentVersion();
             id = rb.id;
             odds = rb.odds;
             raceTime = rb.raceTime;
@@ -192,5 +210,4 @@ public final class Race {
             version++;
         }
     }
-
 }

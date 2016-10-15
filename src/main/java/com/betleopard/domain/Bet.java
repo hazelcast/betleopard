@@ -1,8 +1,8 @@
 package com.betleopard.domain;
 
+import com.betleopard.JSONSerializable;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
  * @author ben
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class Bet {
+public final class Bet implements JSONSerializable {
 
     private final long id;
     private final List<Leg> legs;
@@ -140,11 +140,6 @@ public class Bet {
         }
 
         return bb.build();
-    }
-
-    public String toJSONString() throws JsonProcessingException {
-        final ObjectMapper mapper = new ObjectMapper();
-        return mapper.writeValueAsString(this);
     }
 
 }
