@@ -26,11 +26,7 @@ public class Leg {
             odds = Optional.empty();
             oddsVersion = -1;
         }
-        if (stake != null) {
-            stakeOrAcc = Optional.of(stake);
-        } else {
-            stakeOrAcc = Optional.empty();
-        }
+        stakeOrAcc = Optional.ofNullable(stake);
     }
 
     private double stake() {
@@ -74,7 +70,7 @@ public class Leg {
 
     @Override
     public String toString() {
-        return "Leg{" + "race=" + race + ", oType=" + oType + ", odds=" + odds + '}';
+        return "Leg{" + "race=" + race + ", oddsVersion=" + oddsVersion + ", oType=" + oType + ", odds=" + odds + ", backing=" + backing + ", stakeOrAcc=" + stakeOrAcc + '}';
     }
 
 }
