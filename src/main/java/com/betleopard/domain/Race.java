@@ -87,6 +87,14 @@ public final class Race {
         return getCurrentBody().raceTime;
     }
 
+    public long getID() {
+        return id;
+    }
+
+    public boolean hasRun() {
+        return hasRun;
+    }
+    
     /**
      *
      * @author ben
@@ -182,4 +190,5 @@ public final class Race {
             version++;
         }
     }
+
 }

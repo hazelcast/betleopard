@@ -1,5 +1,7 @@
 package com.betleopard.domain;
 
+import com.betleopard.CustomLegSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.Map;
 import java.util.Optional;
 
@@ -7,8 +9,8 @@ import java.util.Optional;
  *
  * @author ben
  */
-public class Leg {
-
+@JsonSerialize(using = CustomLegSerializer.class)
+public final class Leg {
     private final Race race;
     private final int oddsVersion;
     private final OddsType oType;
@@ -44,13 +46,17 @@ public class Leg {
         stakeOrAcc = Optional.ofNullable(stake);
     }
 
-    private double stake() {
+    public double stake() {
         if (!stakeOrAcc.isPresent()) {
             throw new IllegalStateException("Leg " + toString() + " is not staked yet - part of an accumulator");
         }
         return stakeOrAcc.get();
     }
 
+    public boolean hasStake() {
+        return stakeOrAcc.isPresent();
+    }
+    
     public double odds() {
         return odds.orElse(race.currentOdds(backing));
     }
@@ -59,6 +65,18 @@ public class Leg {
         return race;
     }
 
+    public int getOddsVersion() {
+        return oddsVersion;
+    }
+
+    public OddsType getoType() {
+        return oType;
+    }
+
+    public Horse getBacking() {
+        return backing;
+    }
+    
     public double payout() {
         final Optional<Horse> winner = race.getWinner();
         if (!winner.isPresent()) {
@@ -89,15 +107,24 @@ public class Leg {
     }
 
     static Leg parseBlob(Map<String, ?> blob) {
-        final OddsType type = OddsType.valueOf("" + blob.get("oType"));
-        final Object o = blob.get("odds");
-        if (o == null) {
-            // Starting price
-        } else {
-
+        final OddsType type = OddsType.valueOf("" + blob.get("oddsType"));
+        final long runnerID = Long.parseLong(""+ blob.get("backing"));
+        final long raceID = Long.parseLong(""+ blob.get("race"));
+        
+        Double stake = null;
+        final Object st = blob.get("stakes");
+        if (st != null) {
+            stake = Double.parseDouble("" + st);
         }
+//        
+//        final Object o = blob.get("odds");
+//        if (o == null) {
+//            // Starting price
+//        } else {
+//
+//        }
 
-        return null;
+        return new Leg(raceID, runnerID, type, stake);
     }
 
 }

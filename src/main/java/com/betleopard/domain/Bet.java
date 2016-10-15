@@ -1,8 +1,13 @@
 package com.betleopard.domain;
 
+import com.betleopard.CustomLegSerializer;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -11,12 +16,33 @@ import java.util.stream.Collectors;
  *
  * @author ben
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Bet {
 
     private final long id;
     private final List<Leg> legs;
     private final double stake;
     private final BetType type;
+
+    @JsonProperty
+    public long getId() {
+        return id;
+    }
+    
+    @JsonProperty
+    public List<Leg> getLegs() {
+        return legs;
+    }
+
+    @JsonProperty
+    public double getStake() {
+        return stake;
+    }
+
+    @JsonProperty
+    public BetType getType() {
+        return type;
+    }
 
     private Bet(BetBuilder bb) {
         id = bb.id;
