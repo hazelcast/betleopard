@@ -1,5 +1,6 @@
 package com.betleopard.domain;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -7,6 +8,7 @@ import java.util.*;
  *
  * @author ben
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public final class Race {
 
     public static Race of(long raceID) {
