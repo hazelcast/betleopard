@@ -9,6 +9,11 @@ import java.util.*;
  */
 public final class Race {
 
+    public static Race of(long raceID) {
+        // Look it up in Hazelcast
+        return null;
+    }
+
     private final long id;
     private final List<RaceBody> versions = new ArrayList<>();
     private boolean hasRun = false;

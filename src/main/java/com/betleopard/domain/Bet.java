@@ -1,9 +1,10 @@
 package com.betleopard.domain;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -96,6 +97,31 @@ public class Bet {
             out = l.payout(out);
         }
         return out;
+    }
+
+    public static Bet parse(final String betText) throws IOException {
+        final ObjectMapper mapper = new ObjectMapper();
+        return parseBlob(mapper.readValue(betText, new TypeReference<Map<String, ?>>() {
+        }));
+    }
+
+    public static Bet parseBlob(final Map<String, ?> blob) throws IOException {
+        final BetBuilder bb = new BetBuilder();
+        bb.id = Long.parseLong("" + blob.get("id"));
+        bb.stake = Double.parseDouble("" + blob.get("stake"));
+        bb.type = BetType.valueOf("" + blob.get("type"));
+
+        List<Map<String, ?>> legBlobs = (List<Map<String, ?>>) blob.get("legs");
+        for (Map<String, ?> lB : legBlobs) {
+            bb.addLeg(Leg.parseBlob(lB));
+        }
+
+        return bb.build();
+    }
+
+    public String toJSONString() throws JsonProcessingException {
+        final ObjectMapper mapper = new ObjectMapper();
+        return mapper.writeValueAsString(this);
     }
 
 }

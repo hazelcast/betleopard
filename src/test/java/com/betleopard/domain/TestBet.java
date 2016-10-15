@@ -54,7 +54,7 @@ public class TestBet {
     }
 
     @Test
-    public void testAcker() {
+    public void testAckerWon() {
         final Race r = TestUtils.makeSimpleRace();
         final Horse h = r.findRunnerByID(2);
         final Leg l = new Leg(r, h, OddsType.FIXED_ODDS, null);
@@ -69,4 +69,21 @@ public class TestBet {
         assertEquals("", 40.0, acc.payout(), TestUtils.EPSILON);
         
     }
+
+    @Test
+    public void testAckerLost() {
+        final Race r = TestUtils.makeSimpleRace();
+        final Horse h = r.findRunnerByID(2);
+        final Leg l = new Leg(r, h, OddsType.FIXED_ODDS, null);
+        final Race r2 = TestUtils.makeSimpleRace();
+        final Horse h2 = r.findRunnerByID(3);
+        final Leg l2 = new Leg(r2, h2, OddsType.FIXED_ODDS, null);
+        
+        final Bet.BetBuilder bb = new Bet.BetBuilder();
+        final Bet acc = bb.stake(2.0).id(42).type(BetType.ACCUM).addLeg(l).addLeg(l2).build();
+        r.winner(h);
+        r2.winner(h);
+        assertEquals("", 0.0, acc.payout(), TestUtils.EPSILON);
+    }
+
 }

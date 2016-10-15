@@ -1,5 +1,6 @@
 package com.betleopard.domain;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -15,12 +16,26 @@ public class Leg {
     private final Horse backing;
     private final Optional<Double> stakeOrAcc;
 
-    public Leg(final Race oppo, final Horse runner, final OddsType ot, final Double stake) {
-        race = oppo;
+    public Leg(final long raceID, final long runnerID, final OddsType ot, final Double stake) {
+        race = Race.of(raceID);
+        backing = Horse.of(runnerID);
+        oType = ot;
+        if (oType == OddsType.FIXED_ODDS) {
+            odds = Optional.of(race.currentOdds(backing));
+            oddsVersion = race.version();
+        } else {
+            odds = Optional.empty();
+            oddsVersion = -1;
+        }
+        stakeOrAcc = Optional.ofNullable(stake);
+    }
+
+    public Leg(final Race r, final Horse runner, final OddsType ot, final Double stake) {
+        race = r;
         backing = runner;
         oType = ot;
         if (oType == OddsType.FIXED_ODDS) {
-            odds = Optional.of(oppo.currentOdds(runner));
+            odds = Optional.of(race.currentOdds(runner));
             oddsVersion = race.version();
         } else {
             odds = Optional.empty();
@@ -31,7 +46,7 @@ public class Leg {
 
     private double stake() {
         if (!stakeOrAcc.isPresent()) {
-            throw new IllegalStateException("Leg "+ toString() +" is not staked yet - part of an accumulator");
+            throw new IllegalStateException("Leg " + toString() + " is not staked yet - part of an accumulator");
         }
         return stakeOrAcc.get();
     }
@@ -71,6 +86,18 @@ public class Leg {
     @Override
     public String toString() {
         return "Leg{" + "race=" + race + ", oddsVersion=" + oddsVersion + ", oType=" + oType + ", odds=" + odds + ", backing=" + backing + ", stakeOrAcc=" + stakeOrAcc + '}';
+    }
+
+    static Leg parseBlob(Map<String, ?> blob) {
+        final OddsType type = OddsType.valueOf("" + blob.get("oType"));
+        final Object o = blob.get("odds");
+        if (o == null) {
+            // Starting price
+        } else {
+
+        }
+
+        return null;
     }
 
 }
