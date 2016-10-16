@@ -1,5 +1,9 @@
 package com.betleopard.domain;
 
+import com.betleopard.JSONSerializable;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import static org.junit.Assert.*;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -65,7 +69,7 @@ public class TestBet {
     public void testParse() throws Exception {
 //        {"id":42,"legs":[{"race":1,"backing":2,"oddsVersion":0,"oddsType":"FIXED_ODDS","odds":4.0,"stake":1.0}],"stake":2.0,"type":"SINGLE"}
         final String s = "{\"id\":42,\"legs\":[{\"race\":1,\"backing\":2,\"oddsVersion\":0,\"oddsType\":\"FIXED_ODDS\",\"odds\":4.0,\"stake\":1.0}],\"stake\":2.0,\"type\":\"SINGLE\"}";
-        Bet b = Bet.parse(s);
+        Bet b = JSONSerializable.parse(s, Bet::parseBlob);
         assertNotNull(b);
         assertEquals(42, b.getId());
         assertEquals(2.0, b.getStake(), TestUtils.EPSILON);

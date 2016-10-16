@@ -1,5 +1,6 @@
 package com.betleopard.domain;
 
+import com.betleopard.CentralFactory;
 import com.betleopard.CustomLegSerializer;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.Map;
@@ -19,8 +20,8 @@ public final class Leg {
     private final Optional<Double> stakeOrAcc;
 
     public Leg(final long raceID, final long runnerID, final OddsType ot, final Double stake) {
-        race = Race.of(raceID);
-        backing = Horse.of(runnerID);
+        race = CentralFactory.raceOf(raceID);
+        backing = CentralFactory.horseOf(runnerID);
         oType = ot;
         if (oType == OddsType.FIXED_ODDS) {
             odds = Optional.of(race.currentOdds(backing));
@@ -116,13 +117,6 @@ public final class Leg {
         if (st != null) {
             stake = Double.parseDouble("" + st);
         }
-//        
-//        final Object o = blob.get("odds");
-//        if (o == null) {
-//            // Starting price
-//        } else {
-//
-//        }
 
         return new Leg(raceID, runnerID, type, stake);
     }

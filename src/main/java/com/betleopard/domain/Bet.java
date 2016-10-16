@@ -3,9 +3,6 @@ package com.betleopard.domain;
 import com.betleopard.JSONSerializable;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -55,7 +52,6 @@ public final class Bet implements JSONSerializable {
     }
 
     public static class BetBuilder implements Builder<Bet> {
-
         private long id;
         private Set<Leg> legs = new HashSet<>();
         private double stake;
@@ -122,13 +118,7 @@ public final class Bet implements JSONSerializable {
         return out;
     }
 
-    public static Bet parse(final String betText) throws IOException {
-        final ObjectMapper mapper = new ObjectMapper();
-        return parseBlob(mapper.readValue(betText, new TypeReference<Map<String, ?>>() {
-        }));
-    }
-
-    public static Bet parseBlob(final Map<String, ?> blob) throws IOException {
+    public static Bet parseBlob(final Map<String, ?> blob) {
         final BetBuilder bb = new BetBuilder();
         bb.id = Long.parseLong("" + blob.get("id"));
         bb.stake = Double.parseDouble("" + blob.get("stake"));

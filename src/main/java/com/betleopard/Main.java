@@ -39,10 +39,9 @@ public class Main {
 
         // FIXME 
         final JavaRDD<String> betsText = sc.textFile(null);
-        final JavaRDD<Bet> words = betsText.map(Bet::parse);
-        
-        
-        final JavaPairRDD<Bet, Integer> pairs = words.mapToPair(s -> {
+        final JavaRDD<Bet> bets = betsText.map(s -> JSONSerializable.parse(s, Bet::parseBlob));
+
+        final JavaPairRDD<Bet, Integer> pairs = bets.mapToPair(s -> {
             return new Tuple2<Bet, Integer>(s, 1);
         });
         final JavaPairRDD<Bet, Integer> counts = pairs.reduceByKey((a, b) -> {
@@ -63,8 +62,7 @@ public class Main {
         sc.stop();
     }
 
-    
     private void setupHorses() {
-        
+
     }
 }

@@ -1,9 +1,13 @@
 package com.betleopard.domain;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  *
  * @author ben
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public final class Horse {
 
     private final String name;
@@ -13,18 +17,19 @@ public final class Horse {
         return new Horse(name, id);
     }
 
-    public static Horse of(long runner) {
-        // Look it up in Hazelcast
-        return null;
-    }
-
     private Horse(final String name, final long id) {
         this.name = name;
         this.id = id;
     }
 
+    @JsonProperty
     public long getID() {
         return id;
+    }
+
+    @JsonProperty
+    public String getName() {
+        return name;
     }
 
     @Override

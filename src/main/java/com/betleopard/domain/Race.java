@@ -13,13 +13,8 @@ import java.util.*;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public final class Race implements JSONSerializable {
 
-    public static Race of(long raceID) {
-        // Look it up in Hazelcast
-        return null;
-    }
-
     private final long id;
-    private final List<RaceBody> versions = new ArrayList<>();
+    private final List<RaceDetails> versions = new ArrayList<>();
     private boolean hasRun = false;
 
     private Race(long raceID) {
@@ -45,7 +40,7 @@ public final class Race implements JSONSerializable {
     }
 
     public Horse findRunnerByID(int horseID) {
-        final RaceBody current = versions.get(version());
+        final RaceDetails current = versions.get(version());
         return current.findRunner(horseID);
     }
 
@@ -54,14 +49,14 @@ public final class Race implements JSONSerializable {
     }
 
     public double currentOdds(final Horse backing) {
-        final RaceBody current = versions.get(version());
+        final RaceDetails current = versions.get(version());
         return current.getOdds(backing);
     }
 
     @JsonProperty
-    public RaceBody getCurrentVersion() {
+    public RaceDetails getCurrentVersion() {
         if (versions.isEmpty()) {
-            return new RaceBody(id);
+            return new RaceDetails(id);
         }
         return versions.get(version());
     }
@@ -69,7 +64,7 @@ public final class Race implements JSONSerializable {
     public void winner(final Horse fptp) {
         final RaceBodyBuilder rbb = new RaceBodyBuilder(this);
         rbb.winner = fptp;
-        final RaceBody finish = rbb.build();
+        final RaceDetails finish = rbb.build();
         versions.add(finish);
         hasRun = true;
     }
@@ -84,7 +79,7 @@ public final class Race implements JSONSerializable {
     public void newOdds(final Map<Horse, Double> book) {
         final RaceBodyBuilder rbb = new RaceBodyBuilder(this);
         rbb.odds = book;
-        final RaceBody nextVer = rbb.build();
+        final RaceDetails nextVer = rbb.build();
         versions.add(nextVer);
     }
 
@@ -107,14 +102,15 @@ public final class Race implements JSONSerializable {
      * @author ben
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static final class RaceBody {
+    public static final class RaceDetails {
+
         private final long id;
         private final Map<Horse, Double> odds; // Decimal "Betfair" style odds
         private final LocalDateTime raceTime;
         private final long version;
         private final Optional<Horse> winner;
 
-        private RaceBody(RaceBodyBuilder rb) {
+        private RaceDetails(RaceBodyBuilder rb) {
             super();
             id = rb.id;
             odds = rb.odds;
@@ -123,7 +119,7 @@ public final class Race implements JSONSerializable {
             winner = Optional.ofNullable(rb.winner);
         }
 
-        private RaceBody(long ID) {
+        private RaceDetails(long ID) {
             super();
             id = ID;
             odds = new HashMap<>();
@@ -146,7 +142,7 @@ public final class Race implements JSONSerializable {
         public Set<Horse> getRunners() {
             return odds.keySet();
         }
-        
+
         // JSON Properties
         @JsonProperty
         public Map<Horse, Double> getOdds() {
@@ -161,10 +157,10 @@ public final class Race implements JSONSerializable {
         @JsonProperty
         public long getVersion() {
             return version;
-        }        
+        }
     }
 
-    public static class RaceBodyBuilder implements Builder<RaceBody> {
+    public static class RaceBodyBuilder implements Builder<RaceDetails> {
 
         private long id = 1;
         private Map<Horse, Double> odds = new HashMap<>();
@@ -173,8 +169,8 @@ public final class Race implements JSONSerializable {
         private Horse winner = null;
 
         @Override
-        public RaceBody build() {
-            return new RaceBody(this);
+        public RaceDetails build() {
+            return new RaceDetails(this);
         }
 
         public RaceBodyBuilder odds(final Map<Horse, Double> odds) {
@@ -194,7 +190,7 @@ public final class Race implements JSONSerializable {
 
         public RaceBodyBuilder(final Race race) {
             super();
-            final RaceBody rb = race.getCurrentVersion();
+            final RaceDetails rb = race.getCurrentVersion();
             id = rb.id;
             odds = rb.odds;
             raceTime = rb.raceTime;
@@ -204,10 +200,6 @@ public final class Race implements JSONSerializable {
 
         public RaceBodyBuilder() {
             super();
-        }
-
-        private void incVersion() {
-            version++;
         }
     }
 }
