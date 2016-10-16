@@ -1,5 +1,6 @@
 package com.betleopard.domain;
 
+import com.betleopard.JSONSerializable;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -8,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @author ben
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public final class Horse {
+public final class Horse implements JSONSerializable {
 
     private final String name;
     private final long id;

@@ -16,13 +16,11 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjuster;
 import static java.time.temporal.TemporalAdjusters.firstDayOfYear;
 import static java.time.temporal.TemporalAdjusters.dayOfWeekInMonth;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -39,14 +37,14 @@ public final class MakeSampleFiles {
 
     private final AtomicLong raceCounter = new AtomicLong(1);
 
-    private enum MajorEvent {
+    public enum MajorEvent {
 
         CHELTENHAM("Cheltenham Gold Cup") {
                     // CGP : 2nd Fri in March
                     @Override
                     public TemporalAdjuster offsetForRace() {
                         return t -> t.with(firstDayOfYear())
-                        .plus(3, ChronoUnit.MONTHS)
+                        .plus(2, ChronoUnit.MONTHS)
                         .with(dayOfWeekInMonth(2, DayOfWeek.FRIDAY));
                     }
                 },
@@ -55,7 +53,7 @@ public final class MakeSampleFiles {
                     @Override
                     public TemporalAdjuster offsetForRace() {
                         return t -> t.with(firstDayOfYear())
-                        .plus(4, ChronoUnit.MONTHS)
+                        .plus(3, ChronoUnit.MONTHS)
                         .with(dayOfWeekInMonth(2, DayOfWeek.SATURDAY));
                     }
                 },
@@ -64,8 +62,8 @@ public final class MakeSampleFiles {
                     @Override
                     public TemporalAdjuster offsetForRace() {
                         return t -> t.with(firstDayOfYear())
-                        .plus(12, ChronoUnit.MONTHS)
-                        .plus(26, ChronoUnit.DAYS);
+                        .plus(11, ChronoUnit.MONTHS)
+                        .plus(25, ChronoUnit.DAYS);
                     }
                 };
 
@@ -74,7 +72,8 @@ public final class MakeSampleFiles {
         public abstract TemporalAdjuster offsetForRace();
 
         private final String name;
-
+        public String getName() { return name; }
+        
         private MajorEvent(final String s) {
             name = s;
         }
@@ -82,42 +81,61 @@ public final class MakeSampleFiles {
 
     public static void main(final String[] args) throws IOException, URISyntaxException {
         final MakeSampleFiles msf = new MakeSampleFiles();
-        msf.makeHistoricalEvents();
+        final List<Event> events = msf.makeHistoricalEvents();
+        msf.saveHistoricalData(events, args.length > 0? args[0] : "/tmp/historical_races.json");
     }
 
-    private void makeHistoricalEvents() throws IOException, URISyntaxException {
+    public List<Event> makeHistoricalEvents() throws IOException, URISyntaxException {
         final List<String> courses = readLinesFromResource("courses.csv");
 
-        final List<Event> goldCups = makeHistoricalEventFromStaticData("cheltenham_simple_raw.csv", MajorEvent.CHELTENHAM);
-        final List<Event> nationals = makeHistoricalEventFromStaticData("cheltenham_simple_raw.csv", MajorEvent.GRAND_NATIONAL);
-        final List<Event> kgvs = makeHistoricalEventFromStaticData("cheltenham_simple_raw.csv", MajorEvent.KING_GEORGE_V);
-
+        final List<Event> goldCups = makeHistoricalEventsFromStaticData("cheltenham_simple_raw.csv", MajorEvent.CHELTENHAM);
+        final List<Event> nationals = makeHistoricalEventsFromStaticData("grand_national_raw.csv", MajorEvent.GRAND_NATIONAL);
+        final List<Event> kgvs = makeHistoricalEventsFromStaticData("king_george_v_raw.csv", MajorEvent.KING_GEORGE_V);
+        final List<Event> out = new ArrayList<>();
+        out.addAll(goldCups);
+        out.addAll(nationals);
+        out.addAll(kgvs);
+        return out;
     }
 
+    public void saveHistoricalData(final List<Event> events, final String fName) throws IOException {
+        final Path p = Paths.get(fName);
+        final List<String> serialized = 
+                events.stream()
+                      .map(e -> e.toJSONString())
+                      .collect(Collectors.toList());
+        Files.write(p, serialized);
+    }
+    
     public List<String> readLinesFromResource(final String rName) throws IOException, URISyntaxException {
         final Path p = Paths.get(getClass().getClassLoader().getResource(rName).toURI());
         return Files.readAllLines(p);
     }
 
-    public List<Event> makeHistoricalEventFromStaticData(final String rName, final MajorEvent ev) throws IOException, URISyntaxException {
+    public List<Event> makeHistoricalEventsFromStaticData(final String rName, final MajorEvent ev) throws IOException, URISyntaxException {
         final List<Event> out = new ArrayList<>();
         final List<String> csvLines = readLinesFromResource(rName);
 
-        for (final String s : csvLines) {
-            final Matcher m = SIMPLE_CSV_PATTERN.matcher(s);
-            if (m.find()) {
-                final String rawYear = m.group(1);
-                final LocalDate raceDay = makeRaceDay(rawYear, ev);
-                final String winner = m.group(2);
-                final Double odds = makeOdds(m.group(3));
-                System.out.println(winner + " won " + ev + " on " + raceDay + " at odds " + odds == null ? " N/A " : odds);
-                out.add(makeEvent(ev, raceDay, winner, odds));
-            } else {
-                throw new IllegalArgumentException(s + " does not match, and it should");
-            }
+        for (final String line : csvLines) {
+            out.add(makeSingleEvent(line, ev));
         }
 
         return out;
+    }
+
+    public Event makeSingleEvent(final String line, final MajorEvent ev) {
+        final Matcher m = SIMPLE_CSV_PATTERN.matcher(line);
+        if (m.find()) {
+            final String rawYear = m.group(1);
+            final LocalDate raceDay = makeRaceDay(rawYear, ev);
+            final String winner = m.group(2);
+            final Double odds = makeOdds(m.group(3));
+//            System.out.println(winner + " won " + ev + " on " + raceDay + " at odds " + (odds == null ? " N/A " : odds));
+            return makeEvent(ev, raceDay, winner, odds);
+        } else {
+            throw new IllegalArgumentException(line + " does not match, and it should");
+        }
+
     }
 
     public LocalDate makeRaceDay(final String rawYear, final MajorEvent ev) {
@@ -162,7 +180,9 @@ public final class MakeSampleFiles {
         final Race r = Race.of(raceDay.atTime(12, 30), raceCounter.getAndIncrement(), odds);
         r.winner(won);
         // Cheat and keep the race & event IDs in step...
-        return new Event(r.getID(), ev + " "+ raceDay, raceDay);
+        final Event e = new Event(r.getID(), ev + " " + raceDay, raceDay);
+        e.addRace(r);
+        return e;
     }
 
 }

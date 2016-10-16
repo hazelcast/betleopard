@@ -62,7 +62,4 @@ public class Main {
         sc.stop();
     }
 
-    private void setupHorses() {
-
-    }
 }

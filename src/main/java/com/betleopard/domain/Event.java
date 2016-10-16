@@ -1,5 +1,6 @@
 package com.betleopard.domain;
 
+import com.betleopard.JSONSerializable;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDate;
@@ -11,7 +12,7 @@ import java.util.List;
  * @author ben
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public final class Event {
+public final class Event implements JSONSerializable {
 
     private final long id;
     private final String name;
@@ -44,6 +45,10 @@ public final class Event {
         return races;
     }
 
+    public void addRace(final Race r) {
+        races.add(r);
+    }
+    
     @Override
     public String toString() {
         return "Event{" + "id=" + id + ", name=" + name + ", date=" + date + ", races=" + races + '}';
