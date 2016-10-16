@@ -18,8 +18,8 @@ public final class Event {
     private final LocalDate date;
     private final List<Race> races = new ArrayList<>();
 
-    public Event(final long raceID, final String raceName, final LocalDate raceDay) {
-        id = raceID;
+    public Event(final long eventID, final String raceName, final LocalDate raceDay) {
+        id = eventID;
         name = raceName;
         date = raceDay;
     }
