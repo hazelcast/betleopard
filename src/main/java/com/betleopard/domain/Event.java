@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -48,9 +49,24 @@ public final class Event implements JSONSerializable {
     public void addRace(final Race r) {
         races.add(r);
     }
-    
+
     @Override
     public String toString() {
         return "Event{" + "id=" + id + ", name=" + name + ", date=" + date + ", races=" + races + '}';
     }
+
+    public static Event parseBlob(final Map<String, ?> blob) {
+        final long id = Long.parseLong("" + blob.get("id"));
+        final String eventName = "" + blob.get("name");
+        final Map<String, ?> dateBits = (Map<String, ?>)blob.get("date");
+        final String year = ""+ dateBits.get("year");
+        final String month = ""+ dateBits.get("monthValue");
+        final String day = ""+ dateBits.get("dayOfMonth");
+//        System.out.println(year+ "-"+ month +"-"+ day);
+        
+        final LocalDate eventDate = LocalDate.of(Integer.parseInt(year), Integer.parseInt(month), Integer.parseInt(day));
+        
+        return new Event(id, eventName, eventDate);
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.betleopard;
 
 import com.betleopard.domain.Bet;
+import com.betleopard.domain.Event;
 import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
@@ -38,13 +39,13 @@ public class Main {
         final HazelcastSparkContext ctx = new HazelcastSparkContext(sc);
 
         // FIXME 
-        final JavaRDD<String> betsText = sc.textFile(null);
-        final JavaRDD<Bet> bets = betsText.map(s -> JSONSerializable.parse(s, Bet::parseBlob));
+        final JavaRDD<String> eventsText = sc.textFile("/tmp/historical_races.json");
+        final JavaRDD<Event> events = eventsText.map(s -> JSONSerializable.parse(s, Event::parseBlob));
 
-        final JavaPairRDD<Bet, Integer> pairs = bets.mapToPair(s -> {
-            return new Tuple2<Bet, Integer>(s, 1);
+        final JavaPairRDD<Event, Integer> pairs = events.mapToPair(s -> {
+            return new Tuple2<Event, Integer>(s, 1);
         });
-        final JavaPairRDD<Bet, Integer> counts = pairs.reduceByKey((a, b) -> {
+        final JavaPairRDD<Event, Integer> counts = pairs.reduceByKey((a, b) -> {
             return a + b;
         });
 

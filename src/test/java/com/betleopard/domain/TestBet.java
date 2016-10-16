@@ -1,9 +1,6 @@
 package com.betleopard.domain;
 
 import com.betleopard.JSONSerializable;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import static org.junit.Assert.*;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
