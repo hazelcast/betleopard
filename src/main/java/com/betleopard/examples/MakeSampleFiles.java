@@ -11,7 +11,8 @@ public final class MakeSampleFiles {
     }
     
     private void makeEvents() {
-        
+        // GN : 2nd Sat in April
+        // CGP : 2nd Fri in March
     }
     
 }
