@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -17,7 +18,7 @@ import java.util.function.Function;
  *
  * @author ben
  */
-public interface JSONSerializable {
+public interface JSONSerializable extends Serializable {
 
     public default String toJSONString() {
         try {
