@@ -1,12 +1,12 @@
 package com.betleopard;
 
-import com.betleopard.domain.Bet;
 import com.betleopard.domain.Event;
 import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.spark.connector.HazelcastSparkContext;
 import static com.hazelcast.spark.connector.HazelcastJavaPairRDDFunctions.javaPairRddFunctions;
+import com.hazelcast.spark.connector.rdd.HazelcastJavaRDD;
 import com.hazelcast.spark.connector.rdd.HazelcastRDDFunctions;
 import java.util.Map;
 import org.apache.spark.SparkConf;
@@ -52,13 +52,28 @@ public class Main {
         HazelcastRDDFunctions tmp = javaPairRddFunctions(counts);
         tmp.saveToHazelcastMap("counts");
 
+        boolean shutdown = false;
+        while (!shutdown) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ex) {
+                shutdown = true;
+            }
+        }
+
+        // FIXME Do we now get this back again via a Hazelcast client?
         final HazelcastInstance client = HazelcastClient.newHazelcastClient();
-        final IMap<Object, Object> countsMap = client.getMap("counts");
+
+        IMap<Object, Object> countsMap = client.getMap("counts");
 
         System.out.println("Results fetched from Hazelcast Map :");
         for (Map.Entry<Object, Object> entry : countsMap.entrySet()) {
             System.out.println(entry.getKey() + ": " + entry.getValue());
         }
+
+        HazelcastJavaRDD<Event, Integer> roundTrip = ctx.fromHazelcastMap("counts");
+        System.out.println(roundTrip.keys());
+
         client.getLifecycleService().terminate();
         sc.stop();
     }
