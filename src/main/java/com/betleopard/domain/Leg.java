@@ -1,6 +1,5 @@
 package com.betleopard.domain;
 
-import com.betleopard.CentralFactory;
 import com.betleopard.CustomLegSerializer;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.Map;

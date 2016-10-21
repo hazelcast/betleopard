@@ -14,11 +14,7 @@ public final class Horse implements JSONSerializable {
     private final String name;
     private final long id;
 
-    public static Horse of(final String name, final long id) {
-        return new Horse(name, id);
-    }
-
-    private Horse(final String name, final long id) {
+    public Horse(final String name, final long id) {
         this.name = name;
         this.id = id;
     }
@@ -37,4 +33,5 @@ public final class Horse implements JSONSerializable {
     public String toString() {
         return "Horse{" + "name=" + name + ", id=" + id + '}';
     }
+    
 }

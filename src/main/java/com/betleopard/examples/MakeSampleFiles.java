@@ -1,6 +1,6 @@
 package com.betleopard.examples;
 
-import com.betleopard.CentralFactory;
+import com.betleopard.domain.CentralFactory;
 import com.betleopard.domain.Event;
 import com.betleopard.domain.Horse;
 import com.betleopard.domain.Race;
@@ -162,10 +162,10 @@ public final class MakeSampleFiles {
 
     public Event makeEvent(final MajorEvent ev, final LocalDate raceDay, final String winner, final Double winningOdds) {
         if (allWinners.get(winner) == null) {
-            allWinners.put(winner, CentralFactory.newHorse(winner));
+            allWinners.put(winner, CentralFactory.horseOf(winner));
             // Just to put another runner in the race
             final String dummy = DUMMY_PREFIX + winner;
-            allWinners.put(dummy, CentralFactory.newHorse(dummy));
+            allWinners.put(dummy, CentralFactory.horseOf(dummy));
         }
         final Horse won = allWinners.get(winner);
         final Horse lost = allWinners.get(DUMMY_PREFIX + winner);

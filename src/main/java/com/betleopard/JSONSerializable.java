@@ -25,16 +25,20 @@ public interface JSONSerializable extends Serializable {
             final ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new Jdk8Module());
             return mapper.writeValueAsString(this);
-        } catch (JsonProcessingException ex) {
-            return "{}";
+        } catch (JsonProcessingException jsonx) {
+            throw new RuntimeException(jsonx);
         }
     }
 
-    public static <E> E parse(final String parseText, final Function<Map<String, ?>, E> f) throws IOException {
+    public static <E> E parse(final String parseText, final Function<Map<String, ?>, E> f) {
         final ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new Jdk8Module());
-        return f.apply(mapper.readValue(parseText, new TypeReference<Map<String, ?>>() {
-        }));
+        try {
+            return f.apply(mapper.readValue(parseText, new TypeReference<Map<String, ?>>() {
+            }));
+        } catch (IOException iox) {
+            throw new RuntimeException(iox);
+        }
     }
 
 }

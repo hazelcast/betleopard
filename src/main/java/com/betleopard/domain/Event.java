@@ -65,8 +65,13 @@ public final class Event implements JSONSerializable {
 //        System.out.println(year+ "-"+ month +"-"+ day);
         
         final LocalDate eventDate = LocalDate.of(Integer.parseInt(year), Integer.parseInt(month), Integer.parseInt(day));
+        final Event out = new Event(id, eventName, eventDate);
+        final List<Map<String, ?>> racesBlob = (List<Map<String, ?>>)blob.get("races");
+        for (final Map<String, ?> raceRaw : racesBlob) {
+            out.addRace(Race.parseBlob(raceRaw));
+        }
         
-        return new Event(id, eventName, eventDate);
+        return out;
     }
 
 }

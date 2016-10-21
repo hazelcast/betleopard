@@ -1,5 +1,6 @@
-package com.betleopard;
+package com.betleopard.hazelcast;
 
+import com.betleopard.JSONSerializable;
 import com.betleopard.domain.Event;
 import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.core.HazelcastInstance;
@@ -19,10 +20,10 @@ import scala.Tuple2;
  *
  * @author ben
  */
-public class Main {
+public class LiveBetMain {
 
     public static void main(String[] args) {
-        final Main main = new Main();
+        final LiveBetMain main = new LiveBetMain();
         main.run();
     }
 
@@ -40,7 +41,8 @@ public class Main {
 
         // FIXME 
         final JavaRDD<String> eventsText = sc.textFile("/tmp/historical_races.json");
-        final JavaRDD<Event> events = eventsText.map(s -> JSONSerializable.parse(s, Event::parseBlob));
+        final JavaRDD<Event> events = 
+                eventsText.map(s -> JSONSerializable.parse(s, Event::parseBlob));
 
         final JavaPairRDD<Event, Integer> pairs = events.mapToPair(s -> {
             return new Tuple2<Event, Integer>(s, 1);
@@ -52,14 +54,14 @@ public class Main {
         HazelcastRDDFunctions tmp = javaPairRddFunctions(counts);
         tmp.saveToHazelcastMap("counts");
 
-        boolean shutdown = false;
-        while (!shutdown) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException ex) {
-                shutdown = true;
-            }
-        }
+//        boolean shutdown = false;
+//        while (!shutdown) {
+//            try {
+//                Thread.sleep(1000);
+//            } catch (InterruptedException ex) {
+//                shutdown = true;
+//            }
+//        }
 
         // FIXME Do we now get this back again via a Hazelcast client?
         final HazelcastInstance client = HazelcastClient.newHazelcastClient();

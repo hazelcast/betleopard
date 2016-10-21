@@ -1,5 +1,7 @@
 package com.betleopard.domain;
 
+import com.betleopard.simple.SimpleFactory;
+import com.betleopard.simple.SimpleHorseFactory;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,9 +19,11 @@ public class TestUtils {
     private static final List<Horse> runners = new ArrayList<>();
 
     public static void setupHorses() {
-        final Horse h0 = Horse.of("Beach Boy", 1);
-        final Horse h1 = Horse.of("Rolling Stone", 2);
-        final Horse h2 = Horse.of("Speedwell", 3);
+        final SimpleFactory<Horse> fact = SimpleHorseFactory.getInstance();
+        
+        final Horse h0 = fact.getByName("Beach Boy");
+        final Horse h1 = fact.getByName("Rolling Stone");
+        final Horse h2 = fact.getByName("Speedwell");
         runners.add(h0);
         runners.add(h1);
         runners.add(h2);

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -145,8 +146,9 @@ public final class Race implements JSONSerializable {
 
         // JSON Properties
         @JsonProperty
-        public Map<Horse, Double> getOdds() {
-            return odds;
+        public Map<Long, Double> getOdds() {
+            return odds.keySet().stream()
+                .collect(Collectors.toMap(h -> h.getID(), h -> odds.get(h)));
         }
 
         @JsonProperty
@@ -201,5 +203,33 @@ public final class Race implements JSONSerializable {
         public RaceBodyBuilder() {
             super();
         }
+    }
+
+    public static Race parseBlob(final Map<String, ?> raceBlob) {
+        final long raceID = Long.parseLong("" + raceBlob.get("id"));
+        final Map<String, ?> blob = (Map<String, ?>) raceBlob.get("currentVersion");
+        
+        // Handle the date & time part first
+        final Map<String, ?> dateBits = (Map<String, ?>) blob.get("raceTime");
+        final int year = Integer.parseInt("" + dateBits.get("year"));
+        final int month = Integer.parseInt("" + dateBits.get("monthValue"));
+        final int day = Integer.parseInt("" + dateBits.get("dayOfMonth"));
+        final int hour = Integer.parseInt("" + dateBits.get("hour"));
+        final int minute = Integer.parseInt("" + dateBits.get("minute"));
+        
+        final LocalDateTime raceTime = LocalDateTime.of(year, month, day, hour, minute);
+        // Do the odds
+        final List<Map<String, String>> runBlob = (List<Map<String, String>>) blob.get("runners");
+        for (Map<String, String> hB : runBlob) {
+            hB.get("id");
+            hB.get("name");
+        }
+        
+        final Map<String, ?> oddBlob = (Map<String, ?>) blob.get("odds");
+        
+        
+        final Race out = Race.of(raceTime, raceID, null);
+
+        return out;
     }
 }
