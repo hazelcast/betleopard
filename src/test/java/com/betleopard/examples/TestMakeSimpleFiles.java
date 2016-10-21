@@ -1,8 +1,12 @@
 package com.betleopard.examples;
 
+import com.betleopard.domain.CentralFactory;
 import com.betleopard.domain.Event;
 import com.betleopard.domain.Race;
+import com.betleopard.domain.TestUtils;
+import com.betleopard.simple.SimpleHorseFactory;
 import static org.junit.Assert.*;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
@@ -11,6 +15,11 @@ import org.junit.Test;
  */
 public class TestMakeSimpleFiles {
 
+    @BeforeClass
+    public static void initialSetup() {
+        CentralFactory.setHorses(SimpleHorseFactory.getInstance());
+    }
+
     @Test
     public void testDataCleansing() {
         final MakeSampleFiles msf = new MakeSampleFiles();
@@ -18,5 +27,5 @@ public class TestMakeSimpleFiles {
         final Race r = e.getRaces().get(0);
         assertTrue(r.getWinner().isPresent());
     }
-    
+
 }
