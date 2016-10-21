@@ -1,5 +1,6 @@
 package com.betleopard.domain;
 
+import com.betleopard.DomainFactory;
 import com.betleopard.JSONSerializable;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -218,17 +219,36 @@ public final class Race implements JSONSerializable {
         final int minute = Integer.parseInt("" + dateBits.get("minute"));
         
         final LocalDateTime raceTime = LocalDateTime.of(year, month, day, hour, minute);
-        // Do the odds
-        final List<Map<String, String>> runBlob = (List<Map<String, String>>) blob.get("runners");
-        for (Map<String, String> hB : runBlob) {
-            hB.get("id");
-            hB.get("name");
+        
+        // Do the runners and then the odds
+        final List<Map<String, ?>> runBlob = (List<Map<String, ?>>) blob.get("runners");
+        final Map<Long, Horse> tmpRunners = new HashMap<>();
+        DomainFactory<Horse> stable = CentralFactory.getHorseFactory();
+        RUNNERS: for (Map<String, ?> hB : runBlob) {
+            final long id = Long.parseLong("" + hB.get("id"));
+            final String name = ""+ hB.get("name");
+            Horse h = stable.getByID(id);
+            if (h != null) {
+                if (h.getName().equals(name)) {
+                    tmpRunners.put(h.getID(), h);
+                    continue RUNNERS;
+                } else {
+                    throw new IllegalStateException("Name of runner: "+ h.getName() +" is not the expected "+ name);
+                }
+            } 
+            h = stable.getByName(name);
+            tmpRunners.put(h.getID(), h);
         }
         
         final Map<String, ?> oddBlob = (Map<String, ?>) blob.get("odds");
+        final Map<Horse, Double> odds = new HashMap<>();
+        for (final String idStr : oddBlob.keySet()) {
+            final double chances = Double.parseDouble(""+ oddBlob.get(idStr));
+            final Horse runner = tmpRunners.get(Long.parseLong(idStr));
+            odds.put(runner, chances);
+        }
         
-        
-        final Race out = Race.of(raceTime, raceID, null);
+        final Race out = Race.of(raceTime, raceID, odds);
 
         return out;
     }

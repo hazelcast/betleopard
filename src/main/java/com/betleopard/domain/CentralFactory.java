@@ -1,9 +1,6 @@
 package com.betleopard.domain;
 
 import com.betleopard.DomainFactory;
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  *
@@ -11,37 +8,41 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class CentralFactory {
 
-    private static DomainFactory<Horse> horses;
-    private static DomainFactory<Race> races;
+    private static DomainFactory<Horse> horseFactory;
+    private static DomainFactory<Race> raceFactory;
 
     public static Horse horseOf(final String name) {
-        Horse out = horses.getByName(name);
+        Horse out = horseFactory.getByName(name);
         if (out == null) {
-            out = new Horse(name, horses.getNext());
+            out = new Horse(name, horseFactory.getNext());
         }
-        horses.cacheIfSupported(out);
+        horseFactory.cacheIfSupported(out);
 
         return out;
     }
 
     public static void setHorses(final DomainFactory<Horse> inject) {
-        horses = inject;
+        horseFactory = inject;
     }
 
     public static Horse horseOf(long runnerID) {
-        return horses.getByID(runnerID);
+        return horseFactory.getByID(runnerID);
     }
 
-//    public static Race raceOf(final LocalDateTime time, final Map<Horse, Double> earlyPrices) {
-//        return Race.of(time, raceID.getAndIncrement(), earlyPrices);
-//    }
-
     public static Race raceOf(long raceID) {
-        return races.getByID(raceID);
+        return raceFactory.getByID(raceID);
     }
 
     public static void setRaces(final DomainFactory<Race> inject) {
-        races = inject;
+        raceFactory = inject;
     }
 
+    public static DomainFactory<Horse> getHorseFactory() {
+        return horseFactory;
+    }
+
+    public static DomainFactory<Race> getRaceFactory() {
+        return raceFactory;
+    }
+    
 }

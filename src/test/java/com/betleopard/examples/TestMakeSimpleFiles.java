@@ -3,7 +3,6 @@ package com.betleopard.examples;
 import com.betleopard.domain.CentralFactory;
 import com.betleopard.domain.Event;
 import com.betleopard.domain.Race;
-import com.betleopard.domain.TestUtils;
 import com.betleopard.simple.SimpleHorseFactory;
 import static org.junit.Assert.*;
 import org.junit.BeforeClass;
