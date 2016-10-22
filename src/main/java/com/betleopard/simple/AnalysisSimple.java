@@ -4,7 +4,6 @@ import com.betleopard.JSONSerializable;
 import com.betleopard.domain.CentralFactory;
 import com.betleopard.domain.Event;
 import com.betleopard.domain.Horse;
-import com.betleopard.domain.Race;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
