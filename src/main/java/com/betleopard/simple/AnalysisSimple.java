@@ -26,20 +26,14 @@ public class AnalysisSimple {
     }
 
     private void run() throws IOException {
-
         final List<String> eventsText = Files.readAllLines(Paths.get("/tmp/historical_races.json"));
+
         final List<Event> events
                 = eventsText.stream()
                 .map(s -> JSONSerializable.parse(s, Event::parseBlob))
                 .collect(Collectors.toList());
 
-        final List<Event> noRaces = events.stream()
-                                          .filter(e -> e.getRaces().size() < 1)
-                                          .collect(Collectors.toList());
-        
-        System.out.println("No races: "+ noRaces);
-        
-        Function<Event, Horse> fptp = e -> e.getRaces().get(0).getWinner().get();
+        final Function<Event, Horse> fptp = e -> e.getRaces().get(0).getWinner().orElse(Horse.PALE);
         final Map<Event, Horse> winners
                 = events.stream()
                 .collect(Collectors.toMap(Function.identity(), fptp));
@@ -48,11 +42,6 @@ public class AnalysisSimple {
         for (Map.Entry<Event, Horse> entry : winners.entrySet()) {
             System.out.println(entry.getKey() + ": " + entry.getValue());
         }
-
-//        for (Iterator<Tuple2<Event, Integer>> it = roundTrip.toLocalIterator(); it.hasNext();) {
-//            Tuple2<Event, Integer> t = (Tuple2<Event, Integer>) it.next();
-//            System.out.println(t._1 + ": " + t._2);
-//        }
 
     }
 

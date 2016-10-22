@@ -4,8 +4,6 @@ import com.betleopard.JSONSerializable;
 import com.betleopard.simple.SimpleHorseFactory;
 import static org.junit.Assert.*;
 import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -20,11 +18,12 @@ public class TestEvent {
     }
 
     @Test
-    @Ignore
-    public void testParse() throws Exception {
-        final String s = "{\"id\":1,\"name\":\"CHELTENHAM 1924-03-14\",\"date\":{\"year\":1924,\"month\":\"MARCH\",\"chronology\":{\"id\":\"ISO\",\"calendarType\":\"iso8601\"},\"dayOfMonth\":14,\"dayOfWeek\":\"FRIDAY\",\"era\":\"CE\",\"dayOfYear\":74,\"leapYear\":true,\"monthValue\":3},\"races\":[{\"id\":1,\"hasRun\":true,\"currentVersion\":{\"odds\":{\"Horse{name=Not Red Splash, id=2}\":3.0,\"Horse{name=Red Splash, id=1}\":6.0},\"raceTime\":{\"hour\":12,\"minute\":30,\"second\":0,\"year\":1924,\"month\":\"MARCH\",\"dayOfMonth\":14,\"dayOfWeek\":\"FRIDAY\",\"dayOfYear\":74,\"monthValue\":3,\"nano\":0,\"chronology\":{\"id\":\"ISO\",\"calendarType\":\"iso8601\"}},\"version\":0,\"runners\":[{\"name\":\"Not Red Splash\",\"id\":2},{\"name\":\"Red Splash\",\"id\":1}]},\"winner\":{\"name\":\"Red Splash\",\"id\":1}}]}";
-        final Event e = JSONSerializable.parse(s, Event::parseBlob);
-        assertNotNull(e);
+    public void test_defect_KickingKing_20161022() throws Exception {
+        final String winStr = "{\"id\":227,\"name\":\"KING_GEORGE_V 2004-12-26\",\"date\":{\"year\":2004,\"month\":\"DECEMBER\",\"dayOfMonth\":26,\"dayOfWeek\":\"SUNDAY\",\"era\":\"CE\",\"dayOfYear\":361,\"leapYear\":true,\"monthValue\":12,\"chronology\":{\"id\":\"ISO\",\"calendarType\":\"iso8601\"}},\"races\":[{\"id\":227,\"hasRun\":true,\"currentVersion\":{\"odds\":{\"129\":1.5,\"130\":20.0},\"raceTime\":{\"nano\":0,\"hour\":12,\"minute\":30,\"second\":0,\"year\":2004,\"month\":\"DECEMBER\",\"dayOfMonth\":26,\"dayOfWeek\":\"SUNDAY\",\"dayOfYear\":361,\"monthValue\":12,\"chronology\":{\"id\":\"ISO\",\"calendarType\":\"iso8601\"}},\"version\":0,\"runners\":[{\"name\":\"Not Kicking King\",\"id\":130},{\"name\":\"Kicking King\",\"id\":129}]},\"winner\":{\"name\":\"Kicking King\",\"id\":129}}]}";
+        
+        final Event event = JSONSerializable.parse(winStr, Event::parseBlob);
+        final Horse winner = event.getRaces().get(0).getWinner().orElse(Horse.PALE);
+        assertNotEquals(Horse.PALE, winner);
     }
 
 }

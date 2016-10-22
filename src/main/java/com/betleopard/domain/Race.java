@@ -149,7 +149,7 @@ public final class Race implements JSONSerializable {
         @JsonProperty
         public Map<Long, Double> getOdds() {
             return odds.keySet().stream()
-                .collect(Collectors.toMap(h -> h.getID(), h -> odds.get(h)));
+                    .collect(Collectors.toMap(h -> h.getID(), h -> odds.get(h)));
         }
 
         @JsonProperty
@@ -209,46 +209,53 @@ public final class Race implements JSONSerializable {
     public static Race parseBlob(final Map<String, ?> raceBlob) {
         final long raceID = Long.parseLong("" + raceBlob.get("id"));
         final Map<String, ?> blob = (Map<String, ?>) raceBlob.get("currentVersion");
-        
-        // Handle the date & time part first
-        final Map<String, ?> dateBits = (Map<String, ?>) blob.get("raceTime");
-        final int year = Integer.parseInt("" + dateBits.get("year"));
-        final int month = Integer.parseInt("" + dateBits.get("monthValue"));
-        final int day = Integer.parseInt("" + dateBits.get("dayOfMonth"));
-        final int hour = Integer.parseInt("" + dateBits.get("hour"));
-        final int minute = Integer.parseInt("" + dateBits.get("minute"));
-        
-        final LocalDateTime raceTime = LocalDateTime.of(year, month, day, hour, minute);
-        
-        // Do the runners and then the odds
+        final LocalDateTime raceTime = JSONSerializable.parseDateTime((Map<String, ?>) blob.get("raceTime"));
+
+        // Do the runners and then the odds                
         final List<Map<String, ?>> runBlob = (List<Map<String, ?>>) blob.get("runners");
         final Map<Long, Horse> tmpRunners = new HashMap<>();
         DomainFactory<Horse> stable = CentralFactory.getHorseFactory();
-        RUNNERS: for (Map<String, ?> hB : runBlob) {
-            final long id = Long.parseLong("" + hB.get("id"));
-            final String name = ""+ hB.get("name");
-            Horse h = stable.getByID(id);
+        final Map<Long, Long> remappedIds = new HashMap<>();
+        RUNNERS:
+        for (Map<String, ?> hB : runBlob) {
+            final long idInInput = Long.parseLong("" + hB.get("id"));
+            final String name = "" + hB.get("name");
+            Horse h = stable.getByID(idInInput);
             if (h != null) {
+                // We've seen this ID before, but does it really correspond to this horse?
                 if (h.getName().equals(name)) {
                     tmpRunners.put(h.getID(), h);
+                    // Yes, so store an identity mapping between fileID and actual
+                    remappedIds.put(idInInput, idInInput);
                     continue RUNNERS;
-                } else {
-                    throw new IllegalStateException("Name of runner: "+ h.getName() +" is not the expected "+ name);
                 }
-            } 
+            }
+            // Create the horse object
             h = stable.getByName(name);
+            // And store the mapping between fileID and actual
+            remappedIds.put(idInInput, h.getID());
             tmpRunners.put(h.getID(), h);
         }
-        
+
+        // Now do the odds using the remapped IDs
         final Map<String, ?> oddBlob = (Map<String, ?>) blob.get("odds");
         final Map<Horse, Double> odds = new HashMap<>();
         for (final String idStr : oddBlob.keySet()) {
-            final double chances = Double.parseDouble(""+ oddBlob.get(idStr));
-            final Horse runner = tmpRunners.get(Long.parseLong(idStr));
+            Horse runner;
+            final Long runnerFromInput = Long.parseLong(idStr);
+            runner = tmpRunners.get(remappedIds.get(runnerFromInput));
+
+            final double chances = Double.parseDouble("" + oddBlob.get(idStr));
             odds.put(runner, chances);
         }
-        
+
+        // Create the race object
         final Race out = Race.of(raceTime, raceID, odds);
+        
+        // Set the winner
+        final Map<String, ?> winnerBlob = (Map<String, ?>) raceBlob.get("winner");
+        final long winnerIdInFile = Long.parseLong("" + winnerBlob.get("id"));
+        out.winner(tmpRunners.get(remappedIds.get(winnerIdInFile)));
 
         return out;
     }

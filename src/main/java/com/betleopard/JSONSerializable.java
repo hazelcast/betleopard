@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import java.io.IOException;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -41,4 +42,13 @@ public interface JSONSerializable extends Serializable {
         }
     }
 
+    public static LocalDateTime parseDateTime(final Map<String, ?> dateBits) {
+        final int year = Integer.parseInt("" + dateBits.get("year"));
+        final int month = Integer.parseInt("" + dateBits.get("monthValue"));
+        final int day = Integer.parseInt("" + dateBits.get("dayOfMonth"));
+        final int hour = Integer.parseInt("" + dateBits.get("hour"));
+        final int minute = Integer.parseInt("" + dateBits.get("minute"));
+
+        return LocalDateTime.of(year, month, day, hour, minute);
+    }
 }

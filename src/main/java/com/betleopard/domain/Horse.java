@@ -11,6 +11,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public final class Horse implements JSONSerializable {
 
+    public final static Horse PALE = new Horse("DEATH", Long.MIN_VALUE);
+    
     private final String name;
     private final long id;
 
