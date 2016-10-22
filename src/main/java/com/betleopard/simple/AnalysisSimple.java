@@ -5,7 +5,9 @@ import com.betleopard.domain.CentralFactory;
 import com.betleopard.domain.Event;
 import com.betleopard.domain.Horse;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Function;
@@ -17,15 +19,16 @@ import java.util.stream.Collectors;
  */
 public class AnalysisSimple {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, URISyntaxException {
         CentralFactory.setHorses(SimpleHorseFactory.getInstance());
         CentralFactory.setRaces(SimpleRaceFactory.getInstance());
         final AnalysisSimple main = new AnalysisSimple();
         main.run();
     }
 
-    private void run() throws IOException {
-        final List<String> eventsText = Files.readAllLines(Paths.get("/tmp/historical_races.json"));
+    private void run() throws IOException, URISyntaxException {
+        final Path p = Paths.get(getClass().getClassLoader().getResource("historical_races.json").toURI());
+        final List<String> eventsText = Files.readAllLines(p);
 
         final List<Event> events
                 = eventsText.stream()
@@ -48,15 +51,15 @@ public class AnalysisSimple {
         final Function<HashMap.Entry<Horse, ?>, Horse> under1 = entry -> entry.getKey();
         final Function<HashMap.Entry<Horse, Integer>, Integer> under2 = entry -> entry.getValue();
         final Function<HashMap.Entry<Horse, Set<Event>>, Integer> setCount = entry -> entry.getValue().size();
-        final Map<Horse, Integer> withWinCount = 
-                                inverted.entrySet().stream()
-                                        .collect(Collectors.toMap(under1, setCount));
+        final Map<Horse, Integer> withWinCount
+                = inverted.entrySet().stream()
+                .collect(Collectors.toMap(under1, setCount));
 
-        final Map<Horse, Integer> multipleWinners =
-                                withWinCount.entrySet().stream()
-                                        .filter(entry -> entry.getValue() > 1)
-                                        .collect(Collectors.toMap(under1, under2));
-                                        
+        final Map<Horse, Integer> multipleWinners
+                = withWinCount.entrySet().stream()
+                .filter(entry -> entry.getValue() > 1)
+                .collect(Collectors.toMap(under1, under2));
+
         System.out.println("Multiple Winners from List :");
         System.out.println(multipleWinners);
     }
