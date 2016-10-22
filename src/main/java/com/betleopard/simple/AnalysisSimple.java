@@ -7,8 +7,7 @@ import com.betleopard.domain.Horse;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -38,11 +37,28 @@ public class AnalysisSimple {
                 = events.stream()
                 .collect(Collectors.toMap(Function.identity(), fptp));
 
-        System.out.println("Results fetched from List :");
+        final Map<Horse, Set<Event>> inverted = new HashMap<>();
         for (Map.Entry<Event, Horse> entry : winners.entrySet()) {
-            System.out.println(entry.getKey() + ": " + entry.getValue());
+            if (inverted.get(entry.getValue()) == null) {
+                inverted.put(entry.getValue(), new HashSet<>());
+            }
+            inverted.get(entry.getValue()).add(entry.getKey());
         }
 
+        final Function<HashMap.Entry<Horse, ?>, Horse> under1 = entry -> entry.getKey();
+        final Function<HashMap.Entry<Horse, Integer>, Integer> under2 = entry -> entry.getValue();
+        final Function<HashMap.Entry<Horse, Set<Event>>, Integer> setCount = entry -> entry.getValue().size();
+        final Map<Horse, Integer> withWinCount = 
+                                inverted.entrySet().stream()
+                                        .collect(Collectors.toMap(under1, setCount));
+
+        final Map<Horse, Integer> multipleWinners =
+                                withWinCount.entrySet().stream()
+                                        .filter(entry -> entry.getValue() > 1)
+                                        .collect(Collectors.toMap(under1, under2));
+                                        
+        System.out.println("Multiple Winners from List :");
+        System.out.println(multipleWinners);
     }
 
 }
