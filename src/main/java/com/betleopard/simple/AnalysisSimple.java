@@ -4,6 +4,7 @@ import com.betleopard.JSONSerializable;
 import com.betleopard.domain.CentralFactory;
 import com.betleopard.domain.Event;
 import com.betleopard.domain.Horse;
+import com.betleopard.domain.Race;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -21,7 +22,7 @@ public class AnalysisSimple {
 
     public static void main(String[] args) throws IOException, URISyntaxException {
         CentralFactory.setHorses(SimpleHorseFactory.getInstance());
-        CentralFactory.setRaces(SimpleRaceFactory.getInstance());
+        CentralFactory.setRaces(new SimpleFactory<>());
         final AnalysisSimple main = new AnalysisSimple();
         main.run();
     }

@@ -31,10 +31,4 @@ public final class SimpleHorseFactory extends SimpleFactory<Horse> {
         cache.put(newHorse.getID(), newHorse);
         return newHorse;
     }
-
-    @Override
-    public boolean cacheIfSupported(Horse h) {
-        cache.put(h.getID(), h);
-        return true;
-    }
 }
