@@ -1,4 +1,4 @@
-package com.betleopard.examples;
+package com.betleopard.simple;
 
 import com.betleopard.domain.CentralFactory;
 import com.betleopard.domain.Event;
@@ -90,7 +90,7 @@ public final class MakeSampleFiles {
 
         final List<Event> goldCups = makeHistoricalEventsFromStaticData("cheltenham_simple_raw.csv", MajorEvent.CHELTENHAM);
         final List<Event> nationals = makeHistoricalEventsFromStaticData("grand_national_raw.csv", MajorEvent.GRAND_NATIONAL);
-        final List<Event> kgvs = makeHistoricalEventsFromStaticData("king_george_v_raw.csv", MajorEvent.KING_GEORGE_V);
+        final List<Event> kgvs = makeHistoricalEventsFromStaticData("king_george_vi_raw.csv", MajorEvent.KING_GEORGE_V);
         final List<Event> out = new ArrayList<>();
         out.addAll(goldCups);
         out.addAll(nationals);

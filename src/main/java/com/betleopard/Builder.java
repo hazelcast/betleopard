@@ -1,4 +1,4 @@
-package com.betleopard.domain;
+package com.betleopard;
 
 /**
  *

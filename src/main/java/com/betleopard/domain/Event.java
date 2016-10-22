@@ -27,7 +27,7 @@ public final class Event implements JSONSerializable {
     }
 
     @JsonProperty
-    public long getId() {
+    public long getID() {
         return id;
     }
 

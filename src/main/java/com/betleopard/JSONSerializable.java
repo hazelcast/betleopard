@@ -19,7 +19,7 @@ import java.util.function.Function;
  *
  * @author ben
  */
-public interface JSONSerializable extends Serializable {
+public interface JSONSerializable extends Serializable, LongIndexed {
 
     public default String toJSONString() {
         try {

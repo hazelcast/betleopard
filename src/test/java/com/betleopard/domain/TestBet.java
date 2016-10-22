@@ -68,7 +68,7 @@ public class TestBet {
         final String s = "{\"id\":42,\"legs\":[{\"race\":1,\"backing\":2,\"oddsVersion\":0,\"oddsType\":\"FIXED_ODDS\",\"odds\":4.0,\"stake\":1.0}],\"stake\":2.0,\"type\":\"SINGLE\"}";
         Bet b = JSONSerializable.parse(s, Bet::parseBlob);
         assertNotNull(b);
-        assertEquals(42, b.getId());
+        assertEquals(42, b.getID());
         assertEquals(2.0, b.getStake(), TestUtils.EPSILON);
         assertEquals(BetType.SINGLE, b.getType());
         for (final Leg l : b.getLegs()) {

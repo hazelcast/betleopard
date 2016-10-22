@@ -1,5 +1,6 @@
 package com.betleopard.domain;
 
+import com.betleopard.Builder;
 import com.betleopard.JSONSerializable;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -19,7 +20,7 @@ public final class Bet implements JSONSerializable {
     private final BetType type;
 
     @JsonProperty
-    public long getId() {
+    public long getID() {
         return id;
     }
     

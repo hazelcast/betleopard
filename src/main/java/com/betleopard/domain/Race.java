@@ -1,5 +1,6 @@
 package com.betleopard.domain;
 
+import com.betleopard.Builder;
 import com.betleopard.DomainFactory;
 import com.betleopard.JSONSerializable;
 import com.fasterxml.jackson.annotation.JsonInclude;

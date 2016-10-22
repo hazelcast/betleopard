@@ -1,5 +1,6 @@
 package com.betleopard.examples;
 
+import com.betleopard.simple.MakeSampleFiles;
 import com.betleopard.domain.CentralFactory;
 import com.betleopard.domain.Event;
 import com.betleopard.domain.Race;
