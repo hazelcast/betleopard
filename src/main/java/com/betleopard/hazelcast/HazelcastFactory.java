@@ -2,42 +2,31 @@ package com.betleopard.hazelcast;
 
 import com.betleopard.DomainFactory;
 import com.betleopard.LongIndexed;
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
-import javax.cache.Cache;
-import javax.cache.CacheManager;
-import javax.cache.Caching;
-import javax.cache.configuration.CompleteConfiguration;
-import javax.cache.configuration.MutableConfiguration;
-import javax.cache.spi.CachingProvider;
+import com.hazelcast.core.IMap;
 
 /**
  *
  * @author ben
  * @param <T>
  */
-public final class HazelcastFactory<T extends LongIndexed> implements DomainFactory<T> {
+public class HazelcastFactory<T extends LongIndexed> implements DomainFactory<T> {
+
+    private final HazelcastInstance hz = Hazelcast.newHazelcastInstance();
 
     // Move to a Hazelcast factory using IAtomicLong
-    protected static IAtomicLong id;
-    protected Cache<Long, T> cache;
+    protected IAtomicLong id;
+    protected IMap<Long, T> cache;
 
     /**
      *
-     * @param cacheName
      * @param classOfT
      */
-    public void init(final String cacheName, final Class<T> classOfT) {
-        final CachingProvider cachingProvider = Caching.getCachingProvider();
-        final CacheManager cacheManager = cachingProvider.getCacheManager();
-
-        // Configuration for the cache, including type information
-        CompleteConfiguration<Long, T> config
-                = new MutableConfiguration<Long, T>()
-                .setTypes(Long.class, classOfT);
-
-        // Create the cache, and get a reference to it
-        cacheManager.createCache(cacheName, config);
-        cache = cacheManager.getCache(cacheName, Long.class, classOfT);
+    public void init(final Class<T> classOfT) {
+        cache = hz.getMap("cache-"+ classOfT);
+        id = hz.getAtomicLong("counter-"+ classOfT);
     }
 
     @Override
