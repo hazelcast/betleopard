@@ -47,6 +47,7 @@ public final class Race implements JSONSerializable {
         return current.findRunner(horseID);
     }
 
+//    @JsonProperty
     public int version() {
         return versions.size() - 1;
     }
@@ -118,7 +119,7 @@ public final class Race implements JSONSerializable {
             id = rb.id;
             odds = rb.odds;
             raceTime = rb.raceTime;
-            version = rb.version++;
+            version = rb.version;
             winner = Optional.ofNullable(rb.winner);
         }
 
@@ -127,7 +128,7 @@ public final class Race implements JSONSerializable {
             id = ID;
             odds = new HashMap<>();
             raceTime = LocalDateTime.MIN;
-            version = 0;
+            version = 1;
             winner = Optional.empty();
         }
 
@@ -162,6 +163,11 @@ public final class Race implements JSONSerializable {
         public long getVersion() {
             return version;
         }
+
+        @Override
+        public String toString() {
+            return "RaceDetails{" + "id=" + id + ", odds=" + odds + ", raceTime=" + raceTime + ", version=" + version + ", winner=" + winner + '}';
+        }
     }
 
     public static class RaceBodyBuilder implements Builder<RaceDetails> {
@@ -169,7 +175,7 @@ public final class Race implements JSONSerializable {
         private long id = 1;
         private Map<Horse, Double> odds = new HashMap<>();
         private LocalDateTime raceTime = LocalDateTime.MIN;
-        private long version = 1;
+        private volatile long version = 1;
         private Horse winner = null;
 
         @Override
@@ -198,7 +204,7 @@ public final class Race implements JSONSerializable {
             id = rb.id;
             odds = rb.odds;
             raceTime = rb.raceTime;
-            version = rb.version;
+            version = rb.version + 1;
             winner = rb.winner.orElse(null);
         }
 
@@ -259,5 +265,10 @@ public final class Race implements JSONSerializable {
         out.winner(tmpRunners.get(remappedIds.get(winnerIdInFile)));
 
         return out;
+    }
+
+    @Override
+    public String toString() {
+        return "Race{" + "id=" + id + ", versions=" + versions + ", hasRun=" + hasRun + '}';
     }
 }
