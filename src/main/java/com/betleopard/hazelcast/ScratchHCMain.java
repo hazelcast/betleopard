@@ -23,7 +23,7 @@ import scala.Tuple2;
  *
  * @author ben
  */
-public class LiveBetMain {
+public class ScratchHCMain {
 
 //    private HazelcastSparkContext ctx;
     private JavaSparkContext sc;
@@ -36,7 +36,7 @@ public class LiveBetMain {
         raceFactory.init(Race.class);
         CentralFactory.setRaces(raceFactory);
 
-        final LiveBetMain main = new LiveBetMain();
+        final ScratchHCMain main = new ScratchHCMain();
         main.init();
         System.out.println("------------------------------------------------------------------------------------------------------------------------------");
         main.createFutureEvents();
@@ -61,16 +61,13 @@ public class LiveBetMain {
         final JavaRDD<Event> events
                 = eventsText.map(s -> JSONSerializable.parse(s, Event::parseBlob));
 
-        final JavaPairRDD<Horse, List<Event>> winners
-                = events.mapToPair(e -> {
-                    final List<Event> evts = new ArrayList<>();
-                    evts.add(e);
-                    return new Tuple2<>(e.getRaces().get(0).getWinner().orElse(Horse.PALE), evts);
-                });
+        final JavaPairRDD<Horse, Integer> winners
+                = events.mapToPair(e -> new Tuple2<>(e.getRaces().get(0).getWinner().orElse(Horse.PALE), 1))
+                        .reduceByKey((a, b) -> a + b)
+                        .filter(t -> t._2 > 1);
 
 //        System.out.println("--------------------------- Writing: ");
 //        System.out.println(winners.collectAsMap());
-
         final HazelcastRDDFunctions tmp = javaPairRddFunctions(winners);
         tmp.saveToHazelcastMap("winners");
     }
