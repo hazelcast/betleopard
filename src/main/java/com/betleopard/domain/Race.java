@@ -5,6 +5,10 @@ import com.betleopard.DomainFactory;
 import com.betleopard.JSONSerializable;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -34,7 +38,7 @@ public final class Race implements JSONSerializable {
     public static Race of(final LocalDateTime time, final long id, final Map<Horse, Double> odds) {
         final Race out = new Race(id);
 
-        final RaceBodyBuilder rbb = new RaceBodyBuilder(out);
+        final RaceDetailsBuilder rbb = new RaceDetailsBuilder(out);
         rbb.raceTime = time;
         rbb.odds = odds;
         out.versions.add(rbb.build());
@@ -66,7 +70,7 @@ public final class Race implements JSONSerializable {
     }
 
     public void winner(final Horse fptp) {
-        final RaceBodyBuilder rbb = new RaceBodyBuilder(this);
+        final RaceDetailsBuilder rbb = new RaceDetailsBuilder(this);
         rbb.winner = fptp;
         final RaceDetails finish = rbb.build();
         versions.add(finish);
@@ -81,7 +85,7 @@ public final class Race implements JSONSerializable {
     }
 
     public void newOdds(final Map<Horse, Double> book) {
-        final RaceBodyBuilder rbb = new RaceBodyBuilder(this);
+        final RaceDetailsBuilder rbb = new RaceDetailsBuilder(this);
         rbb.odds = book;
         final RaceDetails nextVer = rbb.build();
         versions.add(nextVer);
@@ -106,15 +110,15 @@ public final class Race implements JSONSerializable {
      * @author ben
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static final class RaceDetails {
+    public static final class RaceDetails implements Serializable {
 
         private final long id;
         private final Map<Horse, Double> odds; // Decimal "Betfair" style odds
         private final LocalDateTime raceTime;
         private final long version;
-        private final Optional<Horse> winner;
+        private transient Optional<Horse> winner;
 
-        private RaceDetails(RaceBodyBuilder rb) {
+        private RaceDetails(RaceDetailsBuilder rb) {
             super();
             id = rb.id;
             odds = rb.odds;
@@ -168,14 +172,34 @@ public final class Race implements JSONSerializable {
         public String toString() {
             return "RaceDetails{" + "id=" + id + ", odds=" + odds + ", raceTime=" + raceTime + ", version=" + version + ", winner=" + winner + '}';
         }
+
+        private void writeObject(ObjectOutputStream out) throws IOException {
+            out.defaultWriteObject();
+            if (winner.isPresent()) {
+                out.writeObject(winner.get());
+            } else {
+                out.writeObject(Horse.PALE);
+            }
+        }
+
+        private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+            in.defaultReadObject();
+            final Horse h = (Horse) (in.readObject());
+            if (h.equals(Horse.PALE)) {
+                winner = Optional.empty();
+            } else {
+                winner = Optional.of(h);
+            }
+        }
+
     }
 
-    public static class RaceBodyBuilder implements Builder<RaceDetails> {
+    public static class RaceDetailsBuilder implements Builder<RaceDetails> {
 
         private long id = 1;
         private Map<Horse, Double> odds = new HashMap<>();
         private LocalDateTime raceTime = LocalDateTime.MIN;
-        private volatile long version = 1;
+        private long version = 1;
         private Horse winner = null;
 
         @Override
@@ -183,22 +207,22 @@ public final class Race implements JSONSerializable {
             return new RaceDetails(this);
         }
 
-        public RaceBodyBuilder odds(final Map<Horse, Double> odds) {
+        public RaceDetailsBuilder odds(final Map<Horse, Double> odds) {
             this.odds = odds;
             return this;
         }
 
-        public RaceBodyBuilder raceTime(final LocalDateTime time) {
+        public RaceDetailsBuilder raceTime(final LocalDateTime time) {
             raceTime = time;
             return this;
         }
 
-        public RaceBodyBuilder winner(final Horse fptp) {
+        public RaceDetailsBuilder winner(final Horse fptp) {
             winner = fptp;
             return this;
         }
 
-        public RaceBodyBuilder(final Race race) {
+        public RaceDetailsBuilder(final Race race) {
             super();
             final RaceDetails rb = race.getCurrentVersion();
             id = rb.id;
@@ -208,7 +232,7 @@ public final class Race implements JSONSerializable {
             winner = rb.winner.orElse(null);
         }
 
-        public RaceBodyBuilder() {
+        public RaceDetailsBuilder() {
             super();
         }
     }
@@ -258,7 +282,7 @@ public final class Race implements JSONSerializable {
 
         // Create the race object
         final Race out = Race.of(raceTime, raceID, odds);
-        
+
         // Set the winner
         final Map<String, ?> winnerBlob = (Map<String, ?>) raceBlob.get("winner");
         final long winnerIdInFile = Long.parseLong("" + winnerBlob.get("id"));

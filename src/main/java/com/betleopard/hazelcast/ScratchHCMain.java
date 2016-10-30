@@ -10,8 +10,6 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.spark.connector.rdd.HazelcastRDDFunctions;
 import static com.hazelcast.spark.connector.HazelcastJavaPairRDDFunctions.javaPairRddFunctions;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -63,8 +61,8 @@ public class ScratchHCMain {
 
         final JavaPairRDD<Horse, Integer> winners
                 = events.mapToPair(e -> new Tuple2<>(e.getRaces().get(0).getWinner().orElse(Horse.PALE), 1))
-                        .reduceByKey((a, b) -> a + b)
-                        .filter(t -> t._2 > 1);
+                .reduceByKey((a, b) -> a + b)
+                .filter(t -> t._2 > 1);
 
 //        System.out.println("--------------------------- Writing: ");
 //        System.out.println(winners.collectAsMap());
@@ -76,14 +74,6 @@ public class ScratchHCMain {
         sc.stop();
     }
 
-    public void scrap() {
-        // FIXME Do we now get this back again via a Hazelcast client?
-        final HazelcastInstance client = HazelcastClient.newHazelcastClient();
-        IMap<Horse, Event> countsMap = client.getMap("winners");
-
-        client.getLifecycleService().terminate();
-    }
-
     public void run() {
     }
 
@@ -93,6 +83,8 @@ public class ScratchHCMain {
         final Set<Object> winners = fromHC.keySet();
         System.out.println("--------------------------- Winners: ");
         System.out.println(winners);
+        client.getLifecycleService().terminate();
+
     }
 
 }

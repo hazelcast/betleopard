@@ -2,6 +2,8 @@ package com.betleopard.domain;
 
 import com.betleopard.CustomLegSerializer;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import java.io.IOException;
+import java.io.ObjectStreamException;
 import java.util.Map;
 import java.util.Optional;
 
@@ -11,6 +13,7 @@ import java.util.Optional;
  */
 @JsonSerialize(using = CustomLegSerializer.class)
 public final class Leg {
+
     private final Race race;
     private final int oddsVersion;
     private final OddsType oType;
@@ -56,7 +59,7 @@ public final class Leg {
     public boolean hasStake() {
         return stakeOrAcc.isPresent();
     }
-    
+
     public double odds() {
         return odds.orElse(race.currentOdds(backing));
     }
@@ -76,7 +79,7 @@ public final class Leg {
     public Horse getBacking() {
         return backing;
     }
-    
+
     public double payout() {
         final Optional<Horse> winner = race.getWinner();
         if (!winner.isPresent()) {
@@ -108,9 +111,9 @@ public final class Leg {
 
     static Leg parseBlob(Map<String, ?> blob) {
         final OddsType type = OddsType.valueOf("" + blob.get("oddsType"));
-        final long runnerID = Long.parseLong(""+ blob.get("backing"));
-        final long raceID = Long.parseLong(""+ blob.get("race"));
-        
+        final long runnerID = Long.parseLong("" + blob.get("backing"));
+        final long raceID = Long.parseLong("" + blob.get("race"));
+
         Double stake = null;
         final Object st = blob.get("stakes");
         if (st != null) {

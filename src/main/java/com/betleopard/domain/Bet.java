@@ -46,7 +46,7 @@ public final class Bet implements JSONSerializable {
         type = bb.type;
     }
 
-    private static List<Leg> orderLegsByTime(final Set<Leg> legs) {
+    private static List<Leg> orderLegsByTime(final List<Leg> legs) {
         return legs.stream()
                 .sorted((l1, l2) -> l1.getRace().raceTime().isBefore(l2.getRace().raceTime()) ? -1 : 1)
                 .collect(Collectors.toList());
@@ -54,7 +54,7 @@ public final class Bet implements JSONSerializable {
 
     public static class BetBuilder implements Builder<Bet> {
         private long id;
-        private Set<Leg> legs = new HashSet<>();
+        private List<Leg> legs = new ArrayList<>();
         private double stake;
         private BetType type;
 
@@ -84,7 +84,7 @@ public final class Bet implements JSONSerializable {
         }
 
         public BetBuilder clearLegs() {
-            legs = new HashSet<>();
+            legs = new ArrayList<>();
             return this;
         }
     }
