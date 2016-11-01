@@ -28,12 +28,11 @@ public class ScratchHCMain {
 
     public static void main(String[] args) {
         final HazelcastFactory<Horse> stable = HazelcastHorseFactory.getInstance();
-        stable.init(Horse.class);
         CentralFactory.setHorses(stable);
-        final HazelcastFactory<Race> raceFactory = new HazelcastFactory<>();
-        raceFactory.init(Race.class);
+        final HazelcastFactory<Race> raceFactory = new HazelcastFactory<>(Race.class);
         CentralFactory.setRaces(raceFactory);
-
+        // FIXME Events?
+        
         final ScratchHCMain main = new ScratchHCMain();
         main.init();
         System.out.println("------------------------------------------------------------------------------------------------------------------------------");
@@ -49,11 +48,10 @@ public class ScratchHCMain {
                 .set("hazelcast.server.groupPass", "dev-pass")
                 .set("hazelcast.spark.valueBatchingEnabled", "true")
                 .set("hazelcast.spark.readBatchSize", "5000")
-                .set("hazelcast.spark.writeBatchSize", "5000")
-                .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
+                .set("hazelcast.spark.writeBatchSize", "5000");
+//                .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
 
         sc = new JavaSparkContext("local", "appname", conf);
-//        ctx = new HazelcastSparkContext(sc);
 
         final JavaRDD<String> eventsText = sc.textFile("/tmp/historical_races.json");
         final JavaRDD<Event> events
@@ -64,8 +62,6 @@ public class ScratchHCMain {
                 .reduceByKey((a, b) -> a + b)
                 .filter(t -> t._2 > 1);
 
-//        System.out.println("--------------------------- Writing: ");
-//        System.out.println(winners.collectAsMap());
         final HazelcastRDDFunctions tmp = javaPairRddFunctions(winners);
         tmp.saveToHazelcastMap("winners");
     }

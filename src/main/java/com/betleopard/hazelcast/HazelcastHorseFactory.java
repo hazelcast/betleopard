@@ -1,6 +1,5 @@
 package com.betleopard.hazelcast;
 
-import com.betleopard.simple.*;
 import com.betleopard.domain.Horse;
 import java.util.Collection;
 
@@ -13,6 +12,7 @@ public final class HazelcastHorseFactory extends HazelcastFactory<Horse> {
     private static final HazelcastHorseFactory instance = new HazelcastHorseFactory();
 
     private HazelcastHorseFactory() {
+        super(Horse.class);
     }
 
     public static HazelcastHorseFactory getInstance() {

@@ -19,14 +19,11 @@ public class HazelcastFactory<T extends LongIndexed> implements DomainFactory<T>
     // Move to a Hazelcast factory using IAtomicLong
     protected IAtomicLong id;
     protected IMap<Long, T> cache;
+    protected String className;
 
-    /**
-     *
-     * @param classOfT
-     */
-    public void init(final Class<T> classOfT) {
-        cache = hz.getMap("cache-"+ classOfT);
-        id = hz.getAtomicLong("counter-"+ classOfT);
+    public HazelcastFactory(final Class<T> classOfT) {
+        cache = hz.getMap("cache-" + classOfT);
+        id = hz.getAtomicLong("counter-" + classOfT);
     }
 
     @Override

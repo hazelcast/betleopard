@@ -3,6 +3,8 @@ package com.betleopard.domain;
 import com.betleopard.CustomLegSerializer;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.ObjectStreamException;
 import java.util.Map;
 import java.util.Optional;
@@ -17,9 +19,9 @@ public final class Leg {
     private final Race race;
     private final int oddsVersion;
     private final OddsType oType;
-    private final Optional<Double> odds;
+    private transient Optional<Double> odds;
     private final Horse backing;
-    private final Optional<Double> stakeOrAcc;
+    private transient Optional<Double> stakeOrAcc;
 
     public Leg(final long raceID, final long runnerID, final OddsType ot, final Double stake) {
         race = CentralFactory.raceOf(raceID);
@@ -121,6 +123,38 @@ public final class Leg {
         }
 
         return new Leg(raceID, runnerID, type, stake);
+    }
+
+    // Serialization methods
+    private void writeObject(final ObjectOutputStream out) throws IOException {
+        out.defaultWriteObject();
+        if (odds.isPresent()) {
+            out.writeObject(odds.get());
+        } else {
+            out.writeObject(Double.NaN);
+        }
+        if (stakeOrAcc.isPresent()) {
+            out.writeObject(stakeOrAcc.get());
+        } else {
+            out.writeObject(Double.NaN);
+        }
+    }
+
+    private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        final Double oddsVal = (Double) (in.readObject());
+        if (oddsVal.equals(Double.NaN)) {
+            odds = Optional.empty();
+        } else {
+            odds = Optional.of(oddsVal);
+        }
+        final Double stakeVal = (Double) (in.readObject());
+        if (stakeVal.equals(Double.NaN)) {
+            stakeOrAcc = Optional.empty();
+        } else {
+            stakeOrAcc = Optional.of(stakeVal);
+        }
+
     }
 
 }

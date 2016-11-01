@@ -10,8 +10,9 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.spark.connector.rdd.HazelcastRDDFunctions;
 import static com.hazelcast.spark.connector.HazelcastJavaPairRDDFunctions.javaPairRddFunctions;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Set;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -25,21 +26,19 @@ import scala.Tuple2;
  */
 public class LiveBetMain {
 
-//    private HazelcastSparkContext ctx;
     private JavaSparkContext sc;
 
     public static void main(String[] args) {
         final HazelcastFactory<Horse> stable = HazelcastHorseFactory.getInstance();
-        stable.init(Horse.class);
         CentralFactory.setHorses(stable);
-        final HazelcastFactory<Race> raceFactory = new HazelcastFactory<>();
-        raceFactory.init(Race.class);
+        final HazelcastFactory<Race> raceFactory = new HazelcastFactory<>(Race.class);
         CentralFactory.setRaces(raceFactory);
+        final HazelcastFactory<Event> eventFactory = new HazelcastFactory<>(Event.class);
+        CentralFactory.setEvents(eventFactory);
 
+        
         final LiveBetMain main = new LiveBetMain();
         main.init();
-        System.out.println("------------------------------------------------------------------------------------------------------------------------------");
-        main.createFutureEvents();
         main.run();
         main.stop();
     }
@@ -51,51 +50,41 @@ public class LiveBetMain {
                 .set("hazelcast.server.groupPass", "dev-pass")
                 .set("hazelcast.spark.valueBatchingEnabled", "true")
                 .set("hazelcast.spark.readBatchSize", "5000")
-                .set("hazelcast.spark.writeBatchSize", "5000")
-                .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
+                .set("hazelcast.spark.writeBatchSize", "5000");
 
         sc = new JavaSparkContext("local", "appname", conf);
-//        ctx = new HazelcastSparkContext(sc);
 
         final JavaRDD<String> eventsText = sc.textFile("/tmp/historical_races.json");
         final JavaRDD<Event> events
                 = eventsText.map(s -> JSONSerializable.parse(s, Event::parseBlob));
 
-        final JavaPairRDD<Horse, List<Event>> winners
-                = events.mapToPair(e -> {
-                    final List<Event> evts = new ArrayList<>();
-                    evts.add(e);
-                    return new Tuple2<>(e.getRaces().get(0).getWinner().orElse(Horse.PALE), evts);
-                });
+        final JavaPairRDD<Horse, Integer> winners
+                = events.mapToPair(e -> new Tuple2<>(e.getRaces().get(0).getWinner().orElse(Horse.PALE), 1))
+                .reduceByKey((a, b) -> a + b);
 
-//        System.out.println("--------------------------- Writing: ");
-//        System.out.println(winners.collectAsMap());
+        final HazelcastRDDFunctions accessToHC = javaPairRddFunctions(winners);
+        accessToHC.saveToHazelcastMap("winners");
 
-        final HazelcastRDDFunctions tmp = javaPairRddFunctions(winners);
-        tmp.saveToHazelcastMap("winners");
+        createFutureEvents();
     }
 
     public void stop() {
         sc.stop();
     }
 
-    public void scrap() {
-        // FIXME Do we now get this back again via a Hazelcast client?
-        final HazelcastInstance client = HazelcastClient.newHazelcastClient();
-        IMap<Horse, Event> countsMap = client.getMap("winners");
-
-        client.getLifecycleService().terminate();
-    }
-
     public void run() {
     }
 
     public void createFutureEvents() {
+        // Grab some horses to use as runners in races
         final HazelcastInstance client = HazelcastClient.newHazelcastClient();
-        final IMap<Object, Object> fromHC = client.getMap("winners");
-        final Set<Object> winners = fromHC.keySet();
-        System.out.println("--------------------------- Winners: ");
-        System.out.println(winners);
+        final IMap<Horse, Object> fromHC = client.getMap("winners");
+        final Set<Horse> winners = fromHC.keySet();
+
+        // Now set up some future-dated events for next Sat
+        final LocalDate nextSat = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.SATURDAY));
+        
+        
     }
 
 }

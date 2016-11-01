@@ -50,6 +50,7 @@ public class TestBet {
         assertEquals("", 0.0, acc.payout(), TestUtils.EPSILON);
     }
 
+    // FIXME Add more serialization tests for the native Java serialization...
     @Test
     public void testSerialize() throws Exception {
         final Race r = TestUtils.makeSimpleRace();
@@ -75,7 +76,5 @@ public class TestBet {
             assertNotNull(l);
             assertEquals(TestUtils.makeSimpleRace(), l.getRace());
         }
-//        assertEquals(s, b.toJSONString());
-
     }
 }

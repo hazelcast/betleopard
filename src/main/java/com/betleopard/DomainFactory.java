@@ -21,8 +21,5 @@ public interface DomainFactory<T> {
         return false;
     }
     
-    public default void init(Class<T> clz) {
-    }
-    
     public long getNext();
 }
