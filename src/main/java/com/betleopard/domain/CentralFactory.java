@@ -2,6 +2,8 @@ package com.betleopard.domain;
 
 import com.betleopard.DomainFactory;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  *
@@ -41,6 +43,10 @@ public final class CentralFactory {
 
     public static Race raceOf(long raceID) {
         return raceFactory.getByID(raceID);
+    }
+
+    public static Race raceOf(final LocalDateTime time, final Map<Horse, Double> odds) {
+        return Race.of(time, raceFactory.getNext(), odds);
     }
 
     public static DomainFactory<Race> getRaceFactory() {
