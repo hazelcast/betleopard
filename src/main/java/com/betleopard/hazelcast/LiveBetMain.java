@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
+import java.util.function.Function;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -119,9 +120,10 @@ public class LiveBetMain {
     public void addSomeSimulatedBets() {
         final IMap<Long, Event> events = client.getMap("events");
         final int numBets = 100;
-        for (int i=0; i<numBets; i++) {
+        for (int i = 0; i < numBets; i++) {
             final Race r = getRandomRace(events);
-            r.getCurrentVersion().getOdds();
+            final Map<Long, Double> odds = r.getCurrentVersion().getOdds();
+            final Horse shergar = getRandomHorse(r);
         }
     }
 
@@ -151,8 +153,19 @@ public class LiveBetMain {
         return out;
     }
 
-    private Race getRandomRace(final IMap<Long, Event> events) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    Race getRandomRace(final IMap<Long, Event> eventsByID) {
+        final List<Event> events = new ArrayList<>(eventsByID.values());
+        final int rI = new Random().nextInt(events.size());
+        final Event theDay = events.get(rI);
+        final List<Race> races = theDay.getRaces();
+        final int rR = new Random().nextInt(races.size());
+        return races.get(rR);
     }
 
+    Horse getRandomHorse(final Race r) {
+        final List<Horse> geegees = new ArrayList<>(r.getCurrentVersion().getRunners());
+        final int rH = new Random().nextInt(geegees.size());
+        return geegees.get(rH);
+    }
+    
 }
