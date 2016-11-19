@@ -40,10 +40,6 @@ public class User {
         return id;
     }
 
-    public long getId() {
-        return id;
-    }
-
     public List<Bet> getKnownBets() {
         return knownBets;
     }

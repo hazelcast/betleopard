@@ -31,6 +31,8 @@ public class LiveBetMain {
     private volatile boolean shutdown = false;
     private final HazelcastInstance client = HazelcastClient.newHazelcastClient();
 
+    private final int NUM_USERS = 100;
+
     public static void main(String[] args) {
         final HazelcastFactory<Horse> stable = HazelcastHorseFactory.getInstance();
         CentralFactory.setHorses(stable);
@@ -108,6 +110,8 @@ public class LiveBetMain {
 
     public void addSomeSimulatedBets() {
         final IMap<Long, Event> events = client.getMap("events");
+        final IMap<Long, User> users = client.getMap("users");
+
         final int numBets = 100;
         for (int i = 0; i < numBets; i++) {
             final Race r = getRandomRace(events);
@@ -116,8 +120,17 @@ public class LiveBetMain {
             final Leg l = new Leg(r, shergar, OddsType.FIXED_ODDS, 2.0);
             final Bet.BetBuilder bb = CentralFactory.betOf();
             final Bet b = bb.addLeg(l).stake(l.stake()).build();
-                        // FIXME
-
+            final int rU = new Random().nextInt(users.size());
+            User u = null;
+            int j = 0;
+            USERS: for (final User tmp : users.values()) {
+                if (j >= rU) {
+                    u = tmp;
+                    break USERS;
+                }
+            }
+            if (u == null) throw new IllegalStateException("Failed to pick a user for a random bet");
+            u.addBet(b);
         }
     }
 
@@ -172,18 +185,77 @@ public class LiveBetMain {
             }
             return out;
         });
-        final JavaPairRDD<Race, Set<Bet>> betsByRace = 
-                betsTmp.reduceByKey((s1, s2) -> {
+        final JavaPairRDD<Race, Set<Bet>> betsByRace
+                = betsTmp.reduceByKey((s1, s2) -> {
                     s1.addAll(s2);
                     return s1;
                 });
-        
+
         // For each race, partition the set of bets by the horse they're backing
-        // and compute the potential loss if that horse wins
-        
-        
-        
-        
+        final JavaPairRDD<Race, Map<Horse, Set<Bet>>> partitionedBets
+                = betsByRace.mapToPair(t -> {
+                    final Race r = t._1;
+                    final Map<Horse, Set<Bet>> p = new HashMap<>();
+                    for (final Bet b : t._2) {
+                        for (final Leg l : b.getLegs()) {
+                            if (l.getRace().equals(r)) {
+                                final Horse h = l.getBacking();
+                                if (p.get(h) == null) {
+                                    p.put(h, new HashSet<>());
+                                }
+                                p.get(h).add(b);
+                            }
+                        }
+                    }
+
+                    return new Tuple2<>(r, p);
+                });
+
+        // Now we can compute the potential loss if a specific horse wins each race
+        // and can come up with a worst case analysis, where the house's losses are
+        // maximised across all races...
+        final JavaPairRDD<Race, Tuple2<Horse, Double>> badResults
+                = partitionedBets.mapToPair(t -> {
+                    final Race r = t._1;
+                    final Map<Horse, Double> odds = r.currentOdds();
+                    final Tuple2<Horse, Double> out = worstCase(odds, t._2);
+
+                    return new Tuple2<>(r, out);
+                });
+
+        // Output "perfect storm" combination of top 20 results that caused the losses
+        badResults.takeOrdered(20, (t1, t2) -> t1._2._2.compareTo(t2._2._2))
+                .forEach(t -> {
+                    System.out.println(t._1 + " won by " + t._2._1 + " causes losses of" + t._2._2);
+                });
+
+        // Finally output the maximum possible loss
+        final Tuple2<Horse, Double> zero = new Tuple2<>(Horse.PALE, 0.0);
+        final Tuple2<Horse, Double> apocalypse
+                = badResults.values()
+                .fold(zero, (t1, t2) -> new Tuple2<>(Horse.PALE, t1._2 + t2._2));
+        System.out.println("Worst case total losses: " + apocalypse._2);
+    }
+
+    Tuple2<Horse, Double> worstCase(Map<Horse, Double> odds, Map<Horse, Set<Bet>> partitions) {
+        final Set<Horse> runners = odds.keySet();
+        Tuple2<Horse, Double> out = new Tuple2<>(Horse.PALE, Double.MIN_VALUE);
+        for (final Horse h : runners) {
+            double runningTotal = 0;
+            final Set<Bet> atStake = partitions.get(h);
+            for (final Bet b : atStake) {
+                // Hack, avoid dealing with ackers for now:
+                if (b.getLegs().size() > 1) {
+                    continue;
+                }
+                runningTotal += b.payout();
+            }
+            if (runningTotal > out._2) {
+                out = new Tuple2<>(h, runningTotal);
+            }
+        }
+
+        return out;
     }
 
     Set<Horse> makeRunners(final Set<Horse> horses, int num) {
@@ -223,6 +295,18 @@ public class LiveBetMain {
         return geegees.get(rH);
     }
 
+    void createRandomUsers() {
+        final IMap<Long, User> users = client.getMap("users");
+
+        final String[] firstNames = {"Dave", "Christine", "Sarah", "Sadiq", "Zoe", "Helen", "Mike", "George", "Joanne"};
+        final String[] lastNames = {"Baker", "Jones", "Smith", "Singh", "Shah", "Johnson", "Taylor", "Evans", "Howe"};
+        final Random r = new Random();
+        for (int i = 0; i < NUM_USERS; i++) {
+            final User u = CentralFactory.userOf(firstNames[r.nextInt(firstNames.length)], lastNames[r.nextInt(lastNames.length)]);
+            users.put(u.getID(), u);
+        }
+    }
+
     void loadHistoricalRaces() {
         final JavaRDD<String> eventsText = sc.textFile("/tmp/historical_races.json");
         final JavaRDD<Event> events
@@ -236,7 +320,4 @@ public class LiveBetMain {
         accessToHC.saveToHazelcastMap("winners");
     }
 
-    void createRandomUsers() {
-        // FIXME 
-    }
 }

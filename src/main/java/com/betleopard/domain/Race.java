@@ -61,6 +61,19 @@ public final class Race implements JSONSerializable {
         return current.getOdds(backing);
     }
 
+    public Map<Horse, Double> currentOdds() {
+        final Map<Horse, Double> out = new HashMap<>();
+        for (final Horse h : currentRunners()) {
+            final Double d = currentOdds(h);
+            out.put(h, d);
+        }
+        return out;
+    }
+
+    public final Set<Horse> currentRunners() {
+        return getCurrentVersion().getRunners();
+    }
+
     @JsonProperty
     public RaceDetails getCurrentVersion() {
         if (versions.isEmpty()) {
