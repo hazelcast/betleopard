@@ -63,7 +63,7 @@ public final class Bet implements JSONSerializable {
             return new Bet(this);
         }
 
-        public BetBuilder id(final int id) {
+        public BetBuilder id(final long id) {
             this.id = id;
             return this;
         }
