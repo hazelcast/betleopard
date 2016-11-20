@@ -2,12 +2,21 @@ package com.betleopard.hazelcast;
 
 import com.betleopard.JSONSerializable;
 import com.betleopard.domain.*;
+import com.betleopard.Utils;
 import com.hazelcast.client.HazelcastClient;
+import com.hazelcast.client.config.ClientConfig;
+import com.hazelcast.config.Config;
+import com.hazelcast.config.SerializerConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.spark.connector.rdd.HazelcastRDDFunctions;
 import static com.hazelcast.spark.connector.HazelcastJavaPairRDDFunctions.javaPairRddFunctions;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,25 +38,26 @@ public class LiveBetMain {
 
     private JavaSparkContext sc;
     private volatile boolean shutdown = false;
-    private final HazelcastInstance client = HazelcastClient.newHazelcastClient();
+    private HazelcastInstance client;
 
     private final int NUM_USERS = 100;
 
-    public static void main(String[] args) {
-        final HazelcastFactory<Horse> stable = HazelcastHorseFactory.getInstance();
-        CentralFactory.setHorses(stable);
-        final HazelcastFactory<Race> raceFactory = new HazelcastFactory<>(Race.class);
-        CentralFactory.setRaces(raceFactory);
-        final HazelcastFactory<Event> eventFactory = new HazelcastFactory<>(Event.class);
-        CentralFactory.setEvents(eventFactory);
+    public static void main(String[] args) throws IOException {
+        CentralFactory.setHorses(HazelcastHorseFactory.getInstance());
+        CentralFactory.setRaces(new HazelcastFactory<>(Race.class));
+        CentralFactory.setEvents(new HazelcastFactory<>(Event.class));
+        CentralFactory.setUsers(new HazelcastFactory<>(User.class));
+        CentralFactory.setBets(new HazelcastFactory<>(Bet.class));
 
         final LiveBetMain main = new LiveBetMain();
+        ClientConfig config = new ClientConfig();
+        main.client = HazelcastClient.newHazelcastClient(config);
         main.init();
         main.run();
         main.stop();
     }
 
-    private void init() {
+    private void init() throws IOException {
         final SparkConf conf = new SparkConf()
                 .set("hazelcast.server.addresses", "127.0.0.1:5701")
                 .set("hazelcast.server.groupName", "dev")
@@ -71,66 +81,14 @@ public class LiveBetMain {
         MAIN:
         while (!shutdown) {
             addSomeSimulatedBets();
-            try {
-                Thread.sleep(2);
-            } catch (InterruptedException ex) {
-                shutdown = true;
-                continue MAIN;
-            }
             recalculateRiskReports();
+            // Simulated delay
             try {
-                Thread.sleep(2);
+                Thread.sleep(20_000);
             } catch (InterruptedException ex) {
                 shutdown = true;
                 continue MAIN;
             }
-        }
-    }
-
-    public void createFutureEvent() {
-        // Grab some horses to use as runners in races
-        final IMap<Horse, Object> fromHC = client.getMap("winners");
-        final Set<Horse> horses = fromHC.keySet();
-
-        // Now set up some future-dated events for next Sat
-        final LocalDate nextSat = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.SATURDAY));
-        LocalTime raceTime = LocalTime.of(11, 0); // 1100 start
-        final Event e = CentralFactory.eventOf("Racing from Epsom", nextSat);
-        final Set<Horse> runners = makeRunners(horses, 10);
-        for (int i = 0; i < 18; i++) {
-            final Map<Horse, Double> runnersWithOdds = makeSimulatedOdds(runners);
-            final Race r = CentralFactory.raceOf(LocalDateTime.of(nextSat, raceTime), runnersWithOdds);
-            e.addRace(r);
-
-            raceTime = raceTime.plusMinutes(10);
-        }
-        final IMap<Long, Event> events = client.getMap("events");
-        events.put(e.getID(), e);
-    }
-
-    public void addSomeSimulatedBets() {
-        final IMap<Long, Event> events = client.getMap("events");
-        final IMap<Long, User> users = client.getMap("users");
-
-        final int numBets = 100;
-        for (int i = 0; i < numBets; i++) {
-            final Race r = getRandomRace(events);
-            final Map<Long, Double> odds = r.getCurrentVersion().getOdds();
-            final Horse shergar = getRandomHorse(r);
-            final Leg l = new Leg(r, shergar, OddsType.FIXED_ODDS, 2.0);
-            final Bet.BetBuilder bb = CentralFactory.betOf();
-            final Bet b = bb.addLeg(l).stake(l.stake()).build();
-            final int rU = new Random().nextInt(users.size());
-            User u = null;
-            int j = 0;
-            USERS: for (final User tmp : users.values()) {
-                if (j >= rU) {
-                    u = tmp;
-                    break USERS;
-                }
-            }
-            if (u == null) throw new IllegalStateException("Failed to pick a user for a random bet");
-            u.addBet(b);
         }
     }
 
@@ -218,16 +176,16 @@ public class LiveBetMain {
                 = partitionedBets.mapToPair(t -> {
                     final Race r = t._1;
                     final Map<Horse, Double> odds = r.currentOdds();
-                    final Tuple2<Horse, Double> out = worstCase(odds, t._2);
-
-                    return new Tuple2<>(r, out);
+                    return new Tuple2<>(r, Utils.worstCase(odds, t._2()));
                 });
 
         // Output "perfect storm" combination of top 20 results that caused the losses
-        badResults.takeOrdered(20, (t1, t2) -> t1._2._2.compareTo(t2._2._2))
-                .forEach(t -> {
-                    System.out.println(t._1 + " won by " + t._2._1 + " causes losses of" + t._2._2);
-                });
+        final List<Tuple2<Race, Tuple2<Horse, Double>>> foo
+                = badResults.takeOrdered(20, new Utils.RaceCostComparator());
+
+        foo.forEach(t -> {
+            System.out.println(t._1 + " won by " + t._2._1 + " causes losses of " + t._2._2);
+        });
 
         // Finally output the maximum possible loss
         final Tuple2<Horse, Double> zero = new Tuple2<>(Horse.PALE, 0.0);
@@ -237,28 +195,80 @@ public class LiveBetMain {
         System.out.println("Worst case total losses: " + apocalypse._2);
     }
 
-    Tuple2<Horse, Double> worstCase(Map<Horse, Double> odds, Map<Horse, Set<Bet>> partitions) {
-        final Set<Horse> runners = odds.keySet();
-        Tuple2<Horse, Double> out = new Tuple2<>(Horse.PALE, Double.MIN_VALUE);
-        for (final Horse h : runners) {
-            double runningTotal = 0;
-            final Set<Bet> atStake = partitions.get(h);
-            for (final Bet b : atStake) {
-                // Hack, avoid dealing with ackers for now:
-                if (b.getLegs().size() > 1) {
-                    continue;
-                }
-                runningTotal += b.payout();
-            }
-            if (runningTotal > out._2) {
-                out = new Tuple2<>(h, runningTotal);
-            }
-        }
+    // -------------- Boilerplate and support methods for the simulation
+    
+    // Method to set up an event to hang the bets off
+    public void createFutureEvent() {
+        // Grab some horses to use as runners in races
+        final IMap<Horse, Object> fromHC = client.getMap("winners");
+        final Set<Horse> horses = fromHC.keySet();
 
-        return out;
+        // Now set up some future-dated events for next Sat
+        final LocalDate nextSat = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.SATURDAY));
+        LocalTime raceTime = LocalTime.of(11, 0); // 1100 start
+        final Event e = CentralFactory.eventOf("Racing from Epsom", nextSat);
+        final Set<Horse> runners = makeRunners(horses, 10);
+        for (int i = 0; i < 18; i++) {
+            final Map<Horse, Double> runnersWithOdds = makeSimulatedOdds(runners);
+            final Race r = CentralFactory.raceOf(LocalDateTime.of(nextSat, raceTime), runnersWithOdds);
+            e.addRace(r);
+
+            raceTime = raceTime.plusMinutes(10);
+        }
+        final IMap<Long, Event> events = client.getMap("events");
+        events.put(e.getID(), e);
     }
 
-    Set<Horse> makeRunners(final Set<Horse> horses, int num) {
+    /**
+     * Generates some simulated bets to test the risk reporting
+     */
+    public void addSomeSimulatedBets() {
+        final IMap<Long, Event> events = client.getMap("events");
+        final IMap<Long, User> users = client.getMap("users");
+        System.out.println("Events: " + events.size());
+        System.out.println("Users: " + users.size());
+
+        final int numBets = 100;
+        for (int i = 0; i < numBets; i++) {
+            final Race r = getRandomRace(events);
+            final Map<Long, Double> odds = r.getCurrentVersion().getOdds();
+            final Horse shergar = getRandomHorse(r);
+            final Leg l = new Leg(r, shergar, OddsType.FIXED_ODDS, 2.0);
+            final Bet.BetBuilder bb = CentralFactory.betOf();
+            final Bet b = bb.addLeg(l).stake(l.stake()).build();
+            final int rU = new Random().nextInt(users.size());
+            User u = null;
+            int j = 0;
+            USERS:
+            for (final User tmp : users.values()) {
+                if (j >= rU) {
+                    u = tmp;
+                    break USERS;
+                }
+                j++;
+            }
+            if (u == null)
+                throw new IllegalStateException("Failed to pick a user for a random bet");
+            if (!u.addBet(b)) {
+                System.out.println("Bet " + b + " not added successfully");
+            }
+            users.put(u.getID(), u);
+        }
+        int betCount = 0;
+        for (final User u : users.values()) {
+            betCount += u.getKnownBets().size();
+        }
+        System.out.println("Total Bets: " + betCount);
+    }
+
+    /**
+     * Utility method to get some horses for simulated races
+     * 
+     * @param horses
+     * @param num
+     * @return 
+     */
+    public Set<Horse> makeRunners(final Set<Horse> horses, int num) {
         if (horses.size() < num) {
             return horses;
         }
@@ -270,7 +280,7 @@ public class LiveBetMain {
         return out;
     }
 
-    Map<Horse, Double> makeSimulatedOdds(final Set<Horse> runners) {
+    public Map<Horse, Double> makeSimulatedOdds(final Set<Horse> runners) {
         final Set<Horse> thisRace = makeRunners(runners, 4);
         final Map<Horse, Double> out = new HashMap<>();
         int i = 1;
@@ -280,7 +290,7 @@ public class LiveBetMain {
         return out;
     }
 
-    Race getRandomRace(final IMap<Long, Event> eventsByID) {
+    public Race getRandomRace(final IMap<Long, Event> eventsByID) {
         final List<Event> events = new ArrayList<>(eventsByID.values());
         final int rI = new Random().nextInt(events.size());
         final Event theDay = events.get(rI);
@@ -289,13 +299,13 @@ public class LiveBetMain {
         return races.get(rR);
     }
 
-    Horse getRandomHorse(final Race r) {
+    public Horse getRandomHorse(final Race r) {
         final List<Horse> geegees = new ArrayList<>(r.getCurrentVersion().getRunners());
         final int rH = new Random().nextInt(geegees.size());
         return geegees.get(rH);
     }
 
-    void createRandomUsers() {
+    public void createRandomUsers() {
         final IMap<Long, User> users = client.getMap("users");
 
         final String[] firstNames = {"Dave", "Christine", "Sarah", "Sadiq", "Zoe", "Helen", "Mike", "George", "Joanne"};
@@ -307,7 +317,14 @@ public class LiveBetMain {
         }
     }
 
-    void loadHistoricalRaces() {
+    /**
+     * Loads in historical data, mostly to use as a source of horses for the bet simulation.
+     * @throws IOException 
+     */
+    public void loadHistoricalRaces() throws IOException {
+        final InputStream in = LiveBetMain.class.getResourceAsStream("/historical_races.json");
+        Files.copy(in, Paths.get("/tmp/historical_races.json"), StandardCopyOption.REPLACE_EXISTING);
+
         final JavaRDD<String> eventsText = sc.textFile("/tmp/historical_races.json");
         final JavaRDD<Event> events
                 = eventsText.map(s -> JSONSerializable.parse(s, Event::parseBlob));

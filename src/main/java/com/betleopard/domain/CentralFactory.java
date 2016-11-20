@@ -1,7 +1,6 @@
 package com.betleopard.domain;
 
 import com.betleopard.DomainFactory;
-import com.betleopard.domain.Bet;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -16,7 +15,7 @@ public final class CentralFactory {
     private static DomainFactory<Horse> horseFactory;
     private static DomainFactory<Race> raceFactory;
     private static DomainFactory<User> userFactory;
-    private static DomainFactory<Bet.BetBuilder> betFactory;
+    private static DomainFactory<Bet> betFactory;
 
     public static void setHorses(final DomainFactory<Horse> inject) {
         horseFactory = inject;
@@ -80,13 +79,17 @@ public final class CentralFactory {
         return userFactory;
     }
 
+    public static void setBets(final DomainFactory<Bet> inject) {
+        betFactory = inject;
+    }
+
     public static Bet.BetBuilder betOf() {
         final Bet.BetBuilder out = new Bet.BetBuilder();
         out.id(betFactory.getNext());
         return out;
     }
 
-    public static DomainFactory<Bet.BetBuilder> getBetFactory() {
+    public static DomainFactory<Bet> getBetFactory() {
         return betFactory;
     }
 

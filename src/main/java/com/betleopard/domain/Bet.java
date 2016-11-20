@@ -23,7 +23,7 @@ public final class Bet implements JSONSerializable {
     public long getID() {
         return id;
     }
-    
+
     @JsonProperty
     public List<Leg> getLegs() {
         return legs;
@@ -43,7 +43,11 @@ public final class Bet implements JSONSerializable {
         id = bb.id;
         stake = bb.stake;
         legs = orderLegsByTime(bb.legs);
-        type = bb.type;
+        if (bb.type == null) {
+            type = bb.legs.size() == 1 ? BetType.SINGLE : BetType.ACCUM;
+        } else {
+            type = bb.type;
+        }
     }
 
     private static List<Leg> orderLegsByTime(final List<Leg> legs) {
@@ -53,6 +57,7 @@ public final class Bet implements JSONSerializable {
     }
 
     public static class BetBuilder implements Builder<Bet> {
+
         private long id;
         private List<Leg> legs = new ArrayList<>();
         private double stake;
@@ -87,6 +92,16 @@ public final class Bet implements JSONSerializable {
             legs = new ArrayList<>();
             return this;
         }
+    }
+
+    public double projectedPayout(final Horse h) {
+        if (type != BetType.SINGLE || legs.size() > 1)
+            throw new IllegalStateException("Projected payout only available for single bets");
+
+        final Leg l = legs.iterator().next();
+        if (!l.getBacking().equals(h))
+            return 0.0;
+        return l.odds() * l.stake();
     }
 
     public double payout() {
@@ -133,4 +148,8 @@ public final class Bet implements JSONSerializable {
         return bb.build();
     }
 
+    @Override
+    public String toString() {
+        return "Bet{" + "id=" + id + ", legs=" + legs + ", stake=" + stake + ", type=" + type + '}';
+    }
 }

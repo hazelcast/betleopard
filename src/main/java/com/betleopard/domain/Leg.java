@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.ObjectStreamException;
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
 
@@ -14,7 +14,7 @@ import java.util.Optional;
  * @author ben
  */
 @JsonSerialize(using = CustomLegSerializer.class)
-public final class Leg {
+public final class Leg implements Serializable {
 
     private final Race race;
     private final int oddsVersion;
@@ -154,7 +154,5 @@ public final class Leg {
         } else {
             stakeOrAcc = Optional.of(stakeVal);
         }
-
     }
-
 }

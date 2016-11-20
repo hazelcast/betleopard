@@ -1,18 +1,17 @@
 package com.betleopard.domain;
 
+import com.betleopard.JSONSerializable;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 
 /**
  *
  * @author kittylyst
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class User {
+public class User implements JSONSerializable {
 
     private final long id;
     private final String firstName;
@@ -39,7 +38,8 @@ public class User {
     public long getID() {
         return id;
     }
-
+    
+    @JsonProperty
     public List<Bet> getKnownBets() {
         return knownBets;
     }
@@ -55,7 +55,7 @@ public class User {
 
     @Override
     public String toString() {
-        return "User{" + "id=" + id + ", firstName=" + firstName + ", lastName=" + lastName + '}';
+        return "User{" + "id=" + id + ", firstName=" + firstName + ", lastName=" + lastName + ", knownBets=" + knownBets + '}';
     }
 
 }
