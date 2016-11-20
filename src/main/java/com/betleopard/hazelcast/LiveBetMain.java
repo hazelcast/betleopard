@@ -5,8 +5,6 @@ import com.betleopard.domain.*;
 import com.betleopard.Utils;
 import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.client.config.ClientConfig;
-import com.hazelcast.config.Config;
-import com.hazelcast.config.SerializerConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.query.Predicate;
@@ -50,14 +48,16 @@ public class LiveBetMain {
         CentralFactory.setBets(new HazelcastFactory<>(Bet.class));
 
         final LiveBetMain main = new LiveBetMain();
-        ClientConfig config = new ClientConfig();
-        main.client = HazelcastClient.newHazelcastClient(config);
         main.init();
         main.run();
         main.stop();
     }
 
     private void init() throws IOException {
+        final ClientConfig config = new ClientConfig();
+        // Set up Hazelcast config if needed...
+        client = HazelcastClient.newHazelcastClient(config);
+
         final SparkConf conf = new SparkConf()
                 .set("hazelcast.server.addresses", "127.0.0.1:5701")
                 .set("hazelcast.server.groupName", "dev")
@@ -82,8 +82,8 @@ public class LiveBetMain {
         while (!shutdown) {
             addSomeSimulatedBets();
             recalculateRiskReports();
-            // Simulated delay
             try {
+                // Simulated delay
                 Thread.sleep(20_000);
             } catch (InterruptedException ex) {
                 shutdown = true;
@@ -93,9 +93,6 @@ public class LiveBetMain {
     }
 
     public void recalculateRiskReports() {
-        final IMap<Long, Event> events = client.getMap("events");
-
-        // Get all the users (can we partition users by activity)
         final IMap<Long, User> users = client.getMap("users");
 
         // Does this user have a bet on this Sat?
@@ -115,7 +112,7 @@ public class LiveBetMain {
             return false;
         };
 
-        // Read bets that are ordered and happen on Sat
+        // Read bets that are ordered and happen on Saturday
         final List<Bet> bets = new ArrayList<>();
         for (final User u : users.values(betOnSat)) {
             // Construct a map of races -> set of bets
@@ -134,17 +131,16 @@ public class LiveBetMain {
         }
 
         final JavaRDD<Bet> betRDD = sc.parallelize(bets);
-        final JavaPairRDD<Race, Set<Bet>> betsTmp = betRDD.flatMapToPair(b -> {
-            final List<Tuple2<Race, Set<Bet>>> out = new ArrayList<>();
-            for (final Leg l : b.getLegs()) {
-                final Set<Bet> bs = new HashSet<>();
-                bs.add(b);
-                out.add(new Tuple2<>(l.getRace(), bs));
-            }
-            return out;
-        });
         final JavaPairRDD<Race, Set<Bet>> betsByRace
-                = betsTmp.reduceByKey((s1, s2) -> {
+                = betRDD.flatMapToPair(b -> {
+                    final List<Tuple2<Race, Set<Bet>>> out = new ArrayList<>();
+                    for (final Leg l : b.getLegs()) {
+                        final Set<Bet> bs = new HashSet<>();
+                        bs.add(b);
+                        out.add(new Tuple2<>(l.getRace(), bs));
+                    }
+                    return out;
+                }).reduceByKey((s1, s2) -> {
                     s1.addAll(s2);
                     return s1;
                 });
@@ -165,7 +161,6 @@ public class LiveBetMain {
                             }
                         }
                     }
-
                     return new Tuple2<>(r, p);
                 });
 
@@ -196,7 +191,6 @@ public class LiveBetMain {
     }
 
     // -------------- Boilerplate and support methods for the simulation
-    
     // Method to set up an event to hang the bets off
     public void createFutureEvent() {
         // Grab some horses to use as runners in races

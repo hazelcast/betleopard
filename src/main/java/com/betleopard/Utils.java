@@ -33,7 +33,7 @@ public final class Utils {
             if (atStake == null)
                 continue;
             for (final Bet b : atStake) {
-                // Hack, avoid dealing with ackers for now:
+                // Avoid dealing with ackers for now:
                 if (b.getLegs().size() > 1) {
                     continue;
                 }
@@ -55,6 +55,5 @@ public final class Utils {
         public int compare(Tuple2<Race, Tuple2<Horse, Double>> t1, Tuple2<Race, Tuple2<Horse, Double>> t2) {
             return t1._2._2.compareTo(t2._2._2);
         }
-    }
-    
+    }   
 }
