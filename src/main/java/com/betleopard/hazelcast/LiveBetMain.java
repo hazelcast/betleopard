@@ -175,10 +175,10 @@ public class LiveBetMain {
                 });
 
         // Output "perfect storm" combination of top 20 results that caused the losses
-        final List<Tuple2<Race, Tuple2<Horse, Double>>> foo
+        final List<Tuple2<Race, Tuple2<Horse, Double>>> topRisks
                 = badResults.takeOrdered(20, new Utils.RaceCostComparator());
 
-        foo.forEach(t -> {
+        topRisks.forEach(t -> {
             System.out.println(t._1 + " won by " + t._2._1 + " causes losses of " + t._2._2);
         });
 

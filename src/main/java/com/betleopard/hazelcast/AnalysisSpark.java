@@ -29,10 +29,7 @@ public class AnalysisSpark {
     }
 
     private void run() {
-        // Use Kryo to allow us to serialize java 8 Optional<T>
         final SparkConf conf = new SparkConf();
-//        conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
-        
         final JavaSparkContext sc = new JavaSparkContext("local", "appname", conf);
 
         final JavaRDD<String> eventsText = sc.textFile("/tmp/historical_races.json");

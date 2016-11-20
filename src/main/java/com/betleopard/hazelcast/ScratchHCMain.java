@@ -49,7 +49,6 @@ public class ScratchHCMain {
                 .set("hazelcast.spark.valueBatchingEnabled", "true")
                 .set("hazelcast.spark.readBatchSize", "5000")
                 .set("hazelcast.spark.writeBatchSize", "5000");
-//                .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
 
         sc = new JavaSparkContext("local", "appname", conf);
 
