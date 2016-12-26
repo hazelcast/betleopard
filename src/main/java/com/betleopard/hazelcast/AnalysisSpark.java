@@ -1,11 +1,14 @@
 package com.betleopard.hazelcast;
 
 import com.betleopard.JSONSerializable;
+import com.betleopard.Utils;
 import com.betleopard.domain.CentralFactory;
 import com.betleopard.domain.Event;
 import com.betleopard.domain.Horse;
 import com.betleopard.simple.SimpleFactory;
 import com.betleopard.simple.SimpleHorseFactory;
+import java.io.IOException;
+import java.nio.file.*;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -16,31 +19,30 @@ import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
 
 /**
+ * A simple example driver program to show how to use Spark to
+ * analyse the provided static data
  *
- * @author ben
+ * @author kittylyst
  */
 public class AnalysisSpark {
 
-    public static void main(String[] args) {
+    private static final String RESOURCE_NAME = "historical_races.json";
+
+    public static void main(String[] args) throws IOException {
         CentralFactory.setHorses(SimpleHorseFactory.getInstance());
         CentralFactory.setRaces(new SimpleFactory<>());
         final AnalysisSpark main = new AnalysisSpark();
         main.run();
     }
 
-    private void run() {
+    private void run() throws IOException {
         final SparkConf conf = new SparkConf();
         final JavaSparkContext sc = new JavaSparkContext("local", "appname", conf);
 
-        final JavaRDD<String> eventsText = sc.textFile("/tmp/historical_races.json");
+        final Path filePath = Utils.unpackDataToTmp(RESOURCE_NAME);
+        final JavaRDD<String> eventsText = sc.textFile(filePath.toString());
         final JavaRDD<Event> events
-                = eventsText.map(s -> JSONSerializable.parse(s, Event::parseBlob));
-
-//        final JavaPairRDD<Horse, Integer> winners
-//                = events.mapToPair(e -> new Tuple2<>(e.getRaces().get(0).getWinner().orElse(Horse.PALE), 1));
-//        final JavaPairRDD<Horse, Integer> multipleWinners
-//                = winners.reduceByKey((a, b) -> a + b)
-//                         .filter(t -> t._2 > 1);
+                = eventsText.map(s -> JSONSerializable.parse(s, Event::parseBag));
 
         final JavaPairRDD<Horse, Set<Event>> winners
                 = events.mapToPair(e -> {
@@ -53,10 +55,10 @@ public class AnalysisSpark {
                     e1.addAll(e2);
                     return e1;
                 });
-        
+
         final JavaPairRDD<Horse, Integer> withWinCount
                 = inverted.mapToPair(t -> new Tuple2<>(t._1, t._2.size()));
-        
+
         final JavaPairRDD<Horse, Integer> multipleWinners
                 = withWinCount.filter(t -> t._2 > 1);
 
@@ -67,5 +69,8 @@ public class AnalysisSpark {
         }
 
         sc.stop();
+        Utils.cleanupDataInTmp(filePath.getParent());
     }
+
+
 }

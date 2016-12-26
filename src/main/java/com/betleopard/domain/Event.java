@@ -9,8 +9,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * An event represents a collection of {@code Race} instances - effectively a 
+ * race meeting. Like other domain objects, it is immutable and {@code JSONSerializable}
  *
- * @author ben
+ * @author kittylyst
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public final class Event implements JSONSerializable {
@@ -55,20 +57,26 @@ public final class Event implements JSONSerializable {
         return "Event{" + "id=" + id + ", name=" + name + ", date=" + date + ", races=" + races + '}';
     }
 
-    public static Event parseBlob(final Map<String, ?> blob) {
-        final long id = Long.parseLong("" + blob.get("id"));
-        final String eventName = "" + blob.get("name");
-        final Map<String, ?> dateBits = (Map<String, ?>)blob.get("date");
+    /**
+     * Factory method for producing a {@code Event} object from a bag. Used when 
+     * deserializing {@code Event} objects from JSON.
+     * 
+     * @param bag the bag of parameters
+     * @return    the deserialized objects
+     */
+    public static Event parseBag(final Map<String, ?> bag) {
+        final long id = Long.parseLong("" + bag.get("id"));
+        final String eventName = "" + bag.get("name");
+        final Map<String, ?> dateBits = (Map<String, ?>)bag.get("date");
         final String year = ""+ dateBits.get("year");
         final String month = ""+ dateBits.get("monthValue");
         final String day = ""+ dateBits.get("dayOfMonth");
-//        System.out.println(year+ "-"+ month +"-"+ day);
         
         final LocalDate eventDate = LocalDate.of(Integer.parseInt(year), Integer.parseInt(month), Integer.parseInt(day));
         final Event out = new Event(id, eventName, eventDate);
-        final List<Map<String, ?>> racesBlob = (List<Map<String, ?>>)blob.get("races");
+        final List<Map<String, ?>> racesBlob = (List<Map<String, ?>>)bag.get("races");
         for (final Map<String, ?> raceRaw : racesBlob) {
-            out.addRace(Race.parseBlob(raceRaw));
+            out.addRace(Race.parseBag(raceRaw));
         }
         
         return out;

@@ -2,7 +2,7 @@ package com.betleopard;
 
 /**
  *
- * @author ben
+ * @author kittylyst
  * @param <T>
  */
 public interface Builder<T> {

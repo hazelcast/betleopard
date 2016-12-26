@@ -4,8 +4,10 @@ import com.betleopard.domain.Horse;
 import java.util.Collection;
 
 /**
- *
- * @author ben
+ * A concrete {@code Horse} factory that demonstrates extending the factory
+ * with the optional "lookup by name" functionality
+ * 
+ * @author kittylyst
  */
 public final class HazelcastHorseFactory extends HazelcastFactory<Horse> {
 

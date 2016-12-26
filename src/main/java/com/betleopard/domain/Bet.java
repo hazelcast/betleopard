@@ -8,12 +8,17 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
+ * The {@code Bet} class models a horse racing bet, which can be either
+ * ante post or starting price, and either a simple bet or a traditional
+ * accumulator. 
  *
- * @author ben
+ * It is an immutable type, and uses the Builder pattern to construct
+ * new instances of {@code Bet}
+ *
+ * @author kittylyst
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public final class Bet implements JSONSerializable {
-
     private final long id;
     private final List<Leg> legs;
     private final double stake;
@@ -56,8 +61,10 @@ public final class Bet implements JSONSerializable {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * The {@code Builder} class for {@code Bet} instances
+     */
     public static class BetBuilder implements Builder<Bet> {
-
         private long id;
         private List<Leg> legs = new ArrayList<>();
         private double stake;
@@ -94,6 +101,13 @@ public final class Bet implements JSONSerializable {
         }
     }
 
+    /**
+     * Provides the projected payout for this bet if a certain horse were to win.
+     * Only applies to ante post single bets
+     * 
+     * @param h the horse under consideration
+     * @return  the projected payout from this {@code Bet}
+     */
     public double projectedPayout(final Horse h) {
         if (type != BetType.SINGLE || legs.size() > 1)
             throw new IllegalStateException("Projected payout only available for single bets");
@@ -104,6 +118,11 @@ public final class Bet implements JSONSerializable {
         return l.odds() * l.stake();
     }
 
+    /**
+     * Calculates the payout for this bet
+     *
+     * @return the payout from the bet
+     */
     public double payout() {
         if (legs.size() == 1) {
             if (type != BetType.SINGLE)
@@ -134,15 +153,22 @@ public final class Bet implements JSONSerializable {
         return out;
     }
 
-    public static Bet parseBlob(final Map<String, ?> blob) {
+    /**
+     * Factory method for producing a {@code Bet} object from a bag. Used when 
+     * deserializing {@code Bet} objects from JSON.
+     * 
+     * @param bag the bag of parameters
+     * @return    the deserialized objects
+     */
+    public static Bet parseBag(final Map<String, ?> bag) {
         final BetBuilder bb = new BetBuilder();
-        bb.id = Long.parseLong("" + blob.get("id"));
-        bb.stake = Double.parseDouble("" + blob.get("stake"));
-        bb.type = BetType.valueOf("" + blob.get("type"));
+        bb.id = Long.parseLong("" + bag.get("id"));
+        bb.stake = Double.parseDouble("" + bag.get("stake"));
+        bb.type = BetType.valueOf("" + bag.get("type"));
 
-        List<Map<String, ?>> legBlobs = (List<Map<String, ?>>) blob.get("legs");
+        List<Map<String, ?>> legBlobs = (List<Map<String, ?>>) bag.get("legs");
         for (Map<String, ?> lB : legBlobs) {
-            bb.addLeg(Leg.parseBlob(lB));
+            bb.addLeg(Leg.parseBag(lB));
         }
 
         return bb.build();

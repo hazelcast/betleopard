@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 /**
  *
- * @author ben
+ * @author kittylyst
  */
 public final class MakeSampleFiles {
 
@@ -38,7 +38,6 @@ public final class MakeSampleFiles {
     private final AtomicLong raceCounter = new AtomicLong(1);
 
     public enum MajorEvent {
-
         CHELTENHAM("Cheltenham Gold Cup") {
                     // CGP : 2nd Fri in March
                     @Override
@@ -66,17 +65,12 @@ public final class MakeSampleFiles {
                         .plus(25, ChronoUnit.DAYS);
                     }
                 };
-
         // Slightly simplified rules for when each race falls - we only have "year" 
         // data and need to generate day level data
         public abstract TemporalAdjuster offsetForRace();
-
         private final String name;
         public String getName() { return name; }
-        
-        private MajorEvent(final String s) {
-            name = s;
-        }
+        private MajorEvent(final String s) { name = s; }
     }
 
     public static void main(final String[] args) throws IOException, URISyntaxException {

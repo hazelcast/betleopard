@@ -5,7 +5,7 @@ import java.util.Collection;
 
 /**
  *
- * @author ben
+ * @author kittylyst
  */
 public final class SimpleHorseFactory extends SimpleFactory<Horse> {
 

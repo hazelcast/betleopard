@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  *
- * @author ben
+ * @author kittylyst
  * @param <T>
  */
 public class SimpleFactory<T extends LongIndexed> implements DomainFactory<T> {

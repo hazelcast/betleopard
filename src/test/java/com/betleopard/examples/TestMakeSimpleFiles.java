@@ -11,7 +11,7 @@ import org.junit.Test;
 
 /**
  *
- * @author ben
+ * @author kittylyst
  */
 public class TestMakeSimpleFiles {
 

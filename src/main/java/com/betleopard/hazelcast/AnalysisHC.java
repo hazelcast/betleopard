@@ -18,8 +18,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- *
- * @author ben
+ * A simple example driver program to show how to use Hazelcast factories to
+ * analyse the provided static data
+ * 
+ * @author kittylyst
  */
 public class AnalysisHC {
 
@@ -48,7 +50,7 @@ public class AnalysisHC {
 
         final List<Event> events
                 = eventsText.stream()
-                .map(s -> JSONSerializable.parse(s, Event::parseBlob))
+                .map(s -> JSONSerializable.parse(s, Event::parseBag))
                 .collect(Collectors.toList());
 
         final Function<Event, Horse> fptp = e -> e.getRaces().get(0).getWinner().orElse(Horse.PALE);
@@ -68,9 +70,9 @@ public class AnalysisHC {
             invertHC.put(h, inverted.get(h));
         }
 
-        final Function<HashMap.Entry<Horse, ?>, Horse> under1 = entry -> entry.getKey();
-        final Function<HashMap.Entry<Horse, Integer>, Integer> under2 = entry -> entry.getValue();
-        final Function<HashMap.Entry<Horse, List<Event>>, Integer> setCount = entry -> entry.getValue().size();
+        final Function<Map.Entry<Horse, ?>, Horse> under1 = entry -> entry.getKey();
+        final Function<Map.Entry<Horse, Integer>, Integer> under2 = entry -> entry.getValue();
+        final Function<Map.Entry<Horse, List<Event>>, Integer> setCount = entry -> entry.getValue().size();
         final Map<Horse, Integer> withWinCount
                 = inverted.entrySet().stream()
                 .collect(Collectors.toMap(under1, setCount));

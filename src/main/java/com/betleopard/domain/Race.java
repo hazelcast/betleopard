@@ -14,8 +14,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- *
- * @author ben
+ * A domain type that represents an individual race. Like other domain objects,
+ * it is immutable and {@code JSONSerializable}. {@code Race} objects contain
+ * versioned details to allow the race odds to change whilst still remaining
+ * immutability
+ * 
+ * @author kittylyst
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public final class Race implements JSONSerializable {
@@ -29,10 +33,11 @@ public final class Race implements JSONSerializable {
     }
 
     /**
+     * Static factory method for producing race objects
      * 
-     * @param time
-     * @param id
-     * @param odds
+     * @param time the race time and date
+     * @param id   the id of the race to be run
+     * @param odds an initial state of the odds for the race
      * @return 
      */
     public static Race of(final LocalDateTime time, final long id, final Map<Horse, Double> odds) {
@@ -51,7 +56,6 @@ public final class Race implements JSONSerializable {
         return current.findRunner(horseID);
     }
 
-//    @JsonProperty
     public int version() {
         return versions.size() - 1;
     }
@@ -82,6 +86,12 @@ public final class Race implements JSONSerializable {
         return versions.get(version());
     }
 
+    /**
+     * This method is called to indicate which horse won the race. This produces
+     * a new version of {@code RaceDetails} to represent the post-race state.
+     * 
+     * @param fptp the horse that was "first pass the post", ie the winner
+     */
     public void winner(final Horse fptp) {
         final RaceDetailsBuilder rbb = new RaceDetailsBuilder(this);
         rbb.winner = fptp;
@@ -97,6 +107,13 @@ public final class Race implements JSONSerializable {
         return getCurrentVersion().winner;
     }
 
+    /**
+     * This method is used when the races odds have changed. The caller supplies
+     * the new odds and a new version of the race details is automatically
+     * generated.
+     * 
+     * @param book the new odds 
+     */
     public void newOdds(final Map<Horse, Double> book) {
         final RaceDetailsBuilder rbb = new RaceDetailsBuilder(this);
         rbb.odds = book;
@@ -119,8 +136,10 @@ public final class Race implements JSONSerializable {
     }
 
     /**
-     *
-     * @author ben
+     * An internal handle class that is used to hold the details of a race. This
+     * allows for updating the race state without introducing mutability.
+     * 
+     * @author kittylyst
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static final class RaceDetails implements Serializable {
@@ -132,7 +151,6 @@ public final class Race implements JSONSerializable {
         private transient Optional<Horse> winner;
 
         private RaceDetails(RaceDetailsBuilder rb) {
-            super();
             id = rb.id;
             odds = rb.odds;
             raceTime = rb.raceTime;
@@ -141,7 +159,6 @@ public final class Race implements JSONSerializable {
         }
 
         private RaceDetails(long ID) {
-            super();
             id = ID;
             odds = new HashMap<>();
             raceTime = LocalDateTime.MIN;
@@ -186,6 +203,12 @@ public final class Race implements JSONSerializable {
             return "RaceDetails{" + "id=" + id + ", odds=" + odds + ", raceTime=" + raceTime + ", version=" + version + ", winner=" + winner + '}';
         }
 
+        /**
+         * Hook for serialization framework
+         * 
+         * @param out
+         * @throws IOException 
+         */
         private void writeObject(ObjectOutputStream out) throws IOException {
             out.defaultWriteObject();
             if (winner.isPresent()) {
@@ -195,6 +218,12 @@ public final class Race implements JSONSerializable {
             }
         }
 
+        /**
+         * Hook for serialization framework
+         * 
+         * @param out
+         * @throws IOException 
+         */
         private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
             in.defaultReadObject();
             final Horse h = (Horse) (in.readObject());
@@ -204,11 +233,12 @@ public final class Race implements JSONSerializable {
                 winner = Optional.of(h);
             }
         }
-
     }
 
+    /**
+     * Builder class for {@code RaceDetails} objects
+     */
     public static class RaceDetailsBuilder implements Builder<RaceDetails> {
-
         private long id = 1;
         private Map<Horse, Double> odds = new HashMap<>();
         private LocalDateTime raceTime = LocalDateTime.MIN;
@@ -250,18 +280,25 @@ public final class Race implements JSONSerializable {
         }
     }
 
-    public static Race parseBlob(final Map<String, ?> raceBlob) {
-        final long raceID = Long.parseLong("" + raceBlob.get("id"));
-        final Map<String, ?> blob = (Map<String, ?>) raceBlob.get("currentVersion");
-        final LocalDateTime raceTime = JSONSerializable.parseDateTime((Map<String, ?>) blob.get("raceTime"));
+    /**
+     * Factory method for producing a {@code Race} object from a bag. Used when 
+     * deserializing {@code Race} objects from JSON.
+     * 
+     * @param raceBag the bag of race entries
+     * @return        the deserialized {@code Race} object
+     */
+    public static Race parseBag(final Map<String, ?> raceBag) {
+        final long raceID = Long.parseLong("" + raceBag.get("id"));
+        final Map<String, ?> bag = (Map<String, ?>) raceBag.get("currentVersion");
+        final LocalDateTime raceTime = JSONSerializable.parseDateTime((Map<String, ?>) bag.get("raceTime"));
 
         // Do the runners and then the odds                
-        final List<Map<String, ?>> runBlob = (List<Map<String, ?>>) blob.get("runners");
+        final List<Map<String, ?>> runBag = (List<Map<String, ?>>) bag.get("runners");
         final Map<Long, Horse> tmpRunners = new HashMap<>();
         DomainFactory<Horse> stable = CentralFactory.getHorseFactory();
         final Map<Long, Long> remappedIds = new HashMap<>();
         RUNNERS:
-        for (Map<String, ?> hB : runBlob) {
+        for (Map<String, ?> hB : runBag) {
             final long idInInput = Long.parseLong("" + hB.get("id"));
             final String name = "" + hB.get("name");
             Horse h = stable.getByID(idInInput);
@@ -282,14 +319,14 @@ public final class Race implements JSONSerializable {
         }
 
         // Now do the odds using the remapped IDs
-        final Map<String, ?> oddBlob = (Map<String, ?>) blob.get("odds");
+        final Map<String, ?> oddBag = (Map<String, ?>) bag.get("odds");
         final Map<Horse, Double> odds = new HashMap<>();
-        for (final String idStr : oddBlob.keySet()) {
+        for (final String idStr : oddBag.keySet()) {
             Horse runner;
             final Long runnerFromInput = Long.parseLong(idStr);
             runner = tmpRunners.get(remappedIds.get(runnerFromInput));
 
-            final double chances = Double.parseDouble("" + oddBlob.get(idStr));
+            final double chances = Double.parseDouble("" + oddBag.get(idStr));
             odds.put(runner, chances);
         }
 
@@ -297,8 +334,8 @@ public final class Race implements JSONSerializable {
         final Race out = Race.of(raceTime, raceID, odds);
 
         // Set the winner
-        final Map<String, ?> winnerBlob = (Map<String, ?>) raceBlob.get("winner");
-        final long winnerIdInFile = Long.parseLong("" + winnerBlob.get("id"));
+        final Map<String, ?> winnerBag = (Map<String, ?>) raceBag.get("winner");
+        final long winnerIdInFile = Long.parseLong("" + winnerBag.get("id"));
         out.winner(tmpRunners.get(remappedIds.get(winnerIdInFile)));
 
         return out;

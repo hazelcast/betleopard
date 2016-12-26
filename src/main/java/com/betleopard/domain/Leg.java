@@ -10,8 +10,11 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- *
- * @author ben
+ * A domain object that represents a single leg of a {@code Bet}. This is one
+ * of the more complex domain objects, and uses custom serialization in order
+ * to provide usable optional fields.
+ * 
+ * @author kittylyst
  */
 @JsonSerialize(using = CustomLegSerializer.class)
 public final class Leg implements Serializable {
@@ -82,6 +85,11 @@ public final class Leg implements Serializable {
         return backing;
     }
 
+    /**
+     * Calculates the payout of this leg. Fails if the race has not yet been run.
+     * 
+     * @return the amount to be paid out
+     */
     public double payout() {
         final Optional<Horse> winner = race.getWinner();
         if (!winner.isPresent()) {
@@ -94,6 +102,13 @@ public final class Leg implements Serializable {
         return 0.0;
     }
 
+    /**
+     * Calculates the payout of this leg. Fails if the race has not yet been run.
+     * Takes a starting stake so can also be applied to starting price bets
+     * 
+     * @param startingStake the actual amount staked 
+     * @return              the amount to be paid out
+     */
     public double payout(final double startingStake) {
         final Optional<Horse> winner = race.getWinner();
         if (!winner.isPresent()) {
@@ -111,13 +126,20 @@ public final class Leg implements Serializable {
         return "Leg{" + "race=" + race + ", oddsVersion=" + oddsVersion + ", oType=" + oType + ", odds=" + odds + ", backing=" + backing + ", stakeOrAcc=" + stakeOrAcc + '}';
     }
 
-    static Leg parseBlob(Map<String, ?> blob) {
-        final OddsType type = OddsType.valueOf("" + blob.get("oddsType"));
-        final long runnerID = Long.parseLong("" + blob.get("backing"));
-        final long raceID = Long.parseLong("" + blob.get("race"));
+    /**
+     * Factory method for producing a {@code Leg} object from a bag. Used when 
+     * deserializing {@code Leg} objects from JSON.
+     * 
+     * @param bag the bag of parameters
+     * @return    the deserialized objects
+     */
+    public static Leg parseBag(Map<String, ?> bag) {
+        final OddsType type = OddsType.valueOf("" + bag.get("oddsType"));
+        final long runnerID = Long.parseLong("" + bag.get("backing"));
+        final long raceID = Long.parseLong("" + bag.get("race"));
 
         Double stake = null;
-        final Object st = blob.get("stakes");
+        final Object st = bag.get("stakes");
         if (st != null) {
             stake = Double.parseDouble("" + st);
         }
@@ -125,7 +147,12 @@ public final class Leg implements Serializable {
         return new Leg(raceID, runnerID, type, stake);
     }
 
-    // Serialization methods
+    /**
+     * Hook for serialization framework
+     * 
+     * @param out
+     * @throws IOException 
+     */
     private void writeObject(final ObjectOutputStream out) throws IOException {
         out.defaultWriteObject();
         if (odds.isPresent()) {
@@ -140,6 +167,12 @@ public final class Leg implements Serializable {
         }
     }
 
+    /**
+     * Hook for serialization framework
+     * 
+     * @param in
+     * @throws IOException 
+     */
     private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
         final Double oddsVal = (Double) (in.readObject());

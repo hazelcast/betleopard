@@ -1,8 +1,9 @@
 package com.betleopard.domain;
 
 /**
- *
- * @author ben
+ * Simple enum type for possible ways to back a horse
+ * 
+ * @author kittylyst
  */
 public enum OddsType {
     FIXED_ODDS, STARTING_PRICE

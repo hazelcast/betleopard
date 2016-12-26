@@ -3,6 +3,7 @@ package com.betleopard.hazelcast;
 import com.betleopard.JSONSerializable;
 import com.betleopard.domain.*;
 import com.betleopard.Utils;
+import com.betleopard.domain.Race.RaceDetails;
 import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.core.HazelcastInstance;
@@ -11,10 +12,7 @@ import com.hazelcast.query.Predicate;
 import com.hazelcast.spark.connector.rdd.HazelcastRDDFunctions;
 import static com.hazelcast.spark.connector.HazelcastJavaPairRDDFunctions.javaPairRddFunctions;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.Path;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,18 +27,22 @@ import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
 
 /**
+ * The main example driver class. Uses both Hazlecast IMDG and Spark to perform
+ * data storage and live analysis of in-running bets.
  *
- * @author ben
+ * @author kittylyst
  */
 public class LiveBetMain {
 
     private JavaSparkContext sc;
     private volatile boolean shutdown = false;
     private HazelcastInstance client;
+    private Path filePath;
 
     private final int NUM_USERS = 100;
 
     public static void main(String[] args) throws IOException {
+        // Initialize the domain object factories with Hazelcast IMDG
         CentralFactory.setHorses(HazelcastHorseFactory.getInstance());
         CentralFactory.setRaces(new HazelcastFactory<>(Race.class));
         CentralFactory.setEvents(new HazelcastFactory<>(Event.class));
@@ -55,7 +57,6 @@ public class LiveBetMain {
 
     private void init() throws IOException {
         final ClientConfig config = new ClientConfig();
-        // Set up Hazelcast config if needed...
         client = HazelcastClient.newHazelcastClient(config);
 
         final SparkConf conf = new SparkConf()
@@ -73,10 +74,14 @@ public class LiveBetMain {
         createFutureEvent();
     }
 
-    public void stop() {
+    public void stop() throws IOException {
         sc.stop();
+        Utils.cleanupDataInTmp(filePath);
     }
 
+    /**
+     * Main run loop 
+     */
     public void run() {
         MAIN:
         while (!shutdown) {
@@ -92,6 +97,9 @@ public class LiveBetMain {
         }
     }
 
+    /**
+     * Do live recalculation of how much potential loss the house is exposed to
+     */
     public void recalculateRiskReports() {
         final IMap<Long, User> users = client.getMap("users");
 
@@ -119,8 +127,8 @@ public class LiveBetMain {
             for (final Bet b : u.getKnownBets()) {
                 BETS:
                 for (final Leg l : b.getLegs()) {
-                    final Race r = l.getRace();
-                    final LocalDate legDate = r.getCurrentVersion().getRaceTime().toLocalDate();
+                    final RaceDetails rd = l.getRace().getCurrentVersion();
+                    final LocalDate legDate = rd.getRaceTime().toLocalDate();
                     if (legDate.equals(thisSat)) {
                         bets.add(b);
                     } else if (legDate.isBefore(thisSat)) {
@@ -190,8 +198,14 @@ public class LiveBetMain {
         System.out.println("Worst case total losses: " + apocalypse._2);
     }
 
-    // -------------- Boilerplate and support methods for the simulation
-    // Method to set up an event to hang the bets off
+/* 
+ * After this point, everything is boilerplate and support methods for the simulation
+ * 
+ */ 
+    
+    /**
+     * Set up an event to hang the bets off  
+     */
     public void createFutureEvent() {
         // Grab some horses to use as runners in races
         final IMap<Horse, Object> fromHC = client.getMap("winners");
@@ -274,6 +288,12 @@ public class LiveBetMain {
         return out;
     }
 
+    /**
+     * Create some simulated odds for this set of runners
+     * 
+     * @param runners
+     * @return 
+     */
     public Map<Horse, Double> makeSimulatedOdds(final Set<Horse> runners) {
         final Set<Horse> thisRace = makeRunners(runners, 4);
         final Map<Horse, Double> out = new HashMap<>();
@@ -284,6 +304,12 @@ public class LiveBetMain {
         return out;
     }
 
+    /**
+     * Return a {@code Race} at random from the provided set
+     * 
+     * @param eventsByID
+     * @return 
+     */
     public Race getRandomRace(final IMap<Long, Event> eventsByID) {
         final List<Event> events = new ArrayList<>(eventsByID.values());
         final int rI = new Random().nextInt(events.size());
@@ -293,12 +319,21 @@ public class LiveBetMain {
         return races.get(rR);
     }
 
+    /**
+     * Return a random horse from the set of runners in the provided {@code Race}
+     * 
+     * @param r
+     * @return 
+     */
     public Horse getRandomHorse(final Race r) {
         final List<Horse> geegees = new ArrayList<>(r.getCurrentVersion().getRunners());
         final int rH = new Random().nextInt(geegees.size());
         return geegees.get(rH);
     }
 
+    /**
+     * Sets up some random users (to place bets) and stores them in Hazlecast IMDG
+     */
     public void createRandomUsers() {
         final IMap<Long, User> users = client.getMap("users");
 
@@ -312,16 +347,17 @@ public class LiveBetMain {
     }
 
     /**
-     * Loads in historical data, mostly to use as a source of horses for the bet simulation.
+     * Loads in historical data and stores in Hazelcast IMDG. This is mostly to 
+     * provide a source of horses for the bet simulation.
+     * 
      * @throws IOException 
      */
     public void loadHistoricalRaces() throws IOException {
-        final InputStream in = LiveBetMain.class.getResourceAsStream("/historical_races.json");
-        Files.copy(in, Paths.get("/tmp/historical_races.json"), StandardCopyOption.REPLACE_EXISTING);
+        filePath = Utils.unpackDataToTmp("historical_races.json");
 
-        final JavaRDD<String> eventsText = sc.textFile("/tmp/historical_races.json");
+        final JavaRDD<String> eventsText = sc.textFile(filePath.toString());
         final JavaRDD<Event> events
-                = eventsText.map(s -> JSONSerializable.parse(s, Event::parseBlob));
+                = eventsText.map(s -> JSONSerializable.parse(s, Event::parseBag));
 
         final JavaPairRDD<Horse, Integer> winners
                 = events.mapToPair(e -> new Tuple2<>(e.getRaces().get(0).getWinner().orElse(Horse.PALE), 1))

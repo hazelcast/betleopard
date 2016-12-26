@@ -8,11 +8,12 @@ import java.util.List;
 
 /**
  *
+ * Like other domain objects, it is immutable and {@code JSONSerializable}
+ *
  * @author kittylyst
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class User implements JSONSerializable {
-
     private final long id;
     private final String firstName;
     private final String lastName;
@@ -45,7 +46,7 @@ public class User implements JSONSerializable {
     }
 
     public boolean addBet(final Bet b) {
-        // FIXME Enforce ordering here...
+        // FIXME Enforce ordering here...?
         return knownBets.add(b);
     }
 

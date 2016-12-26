@@ -8,8 +8,10 @@ import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IMap;
 
 /**
+ * A simple base class that backs the domain factories with Hazelcast IMDG,
+ * using the simple API of IMap and IAtomicLong
  *
- * @author ben
+ * @author kittylyst
  * @param <T>
  */
 public class HazelcastFactory<T extends LongIndexed> implements DomainFactory<T> {

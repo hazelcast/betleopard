@@ -6,11 +6,11 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
- *
- * @author ben
+ * Simple static holder for the factories for various types of domain object
+ * 
+ * @author kittylyst
  */
 public final class CentralFactory {
-
     private static DomainFactory<Event> eventFactory;
     private static DomainFactory<Horse> horseFactory;
     private static DomainFactory<Race> raceFactory;
@@ -92,5 +92,4 @@ public final class CentralFactory {
     public static DomainFactory<Bet> getBetFactory() {
         return betFactory;
     }
-
 }

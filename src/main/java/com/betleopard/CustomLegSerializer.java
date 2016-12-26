@@ -9,11 +9,22 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import java.io.IOException;
 
 /**
+ * Serializer class for bet legs. To work around problems with serialization
+ * of optional fields
  *
- * @author ben
+ * @author kittylyst
  */
 public class CustomLegSerializer extends JsonSerializer<Leg> {
 
+    /**
+     * Perform custom JSON serialization
+     * 
+     * @param leg                      the bet leg to be serialized
+     * @param jgen                     needed to conform to Jackson interface
+     * @param sp                       needed to conform to Jackson interface
+     * @throws IOException             if any fields could not be written
+     * @throws JsonProcessingException if the JSON could not be produced
+     */
     @Override
     public void serialize(final Leg leg, final JsonGenerator jgen, final SerializerProvider sp) throws IOException, JsonProcessingException {
         jgen.writeStartObject();
@@ -31,6 +42,11 @@ public class CustomLegSerializer extends JsonSerializer<Leg> {
         jgen.writeEndObject();
     }
 
+    /**
+     * Returns the type that this serializer will accept
+     * 
+     * @return the accepted type
+     */
     @Override
     public Class<Leg> handledType() {
         return Leg.class;

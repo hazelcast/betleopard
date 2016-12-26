@@ -1,13 +1,9 @@
-/*
- * 
- * 
- * 
- */
 package com.betleopard.domain;
 
 /**
- *
- * @author ben
+ * Simple enum of possible bet types
+ * 
+ * @author kittylyst
  */
 public enum BetType {
     SINGLE, ACCUM

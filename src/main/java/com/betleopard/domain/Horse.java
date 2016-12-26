@@ -5,12 +5,15 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- *
- * @author ben
+ * A simple representation of a horse running in a {@code Race}. Like other 
+ * domain objects, it is immutable and {@code JSONSerializable}
+ * 
+ * @author kittylyst
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public final class Horse implements JSONSerializable {
 
+    // A constant that is used to implement "Broken Object" pattern
     public final static Horse PALE = new Horse("DEATH", Long.MIN_VALUE);
     
     private final String name;
