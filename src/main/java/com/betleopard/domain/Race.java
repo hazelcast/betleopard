@@ -221,8 +221,8 @@ public final class Race implements JSONSerializable {
         /**
          * Hook for serialization framework
          * 
-         * @param out
-         * @throws IOException 
+         * @param in           stream for deserialization
+         * @throws IOException a general, unexpected IO failure
          */
         private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
             in.defaultReadObject();

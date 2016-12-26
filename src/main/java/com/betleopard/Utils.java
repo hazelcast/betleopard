@@ -86,7 +86,7 @@ public final class Utils {
      * 
      * @param resourceName a {@code String} representing the resource to be moved
      * @return             a {@code Path} to the moved file
-     * @throws IOException 
+     * @throws IOException a general, unexpected IO failure
      */
     public static Path unpackDataToTmp(final String resourceName) throws IOException {
         final InputStream in = AnalysisSpark.class.getResourceAsStream("/" + resourceName);
@@ -101,7 +101,7 @@ public final class Utils {
      * Cleans up the temp directory.
      * 
      * @param tmpdir       the directory to be cleaned (the parent of the file that was moved)
-     * @throws IOException 
+     * @throws IOException a general, unexpected IO failure
      */
     public static void cleanupDataInTmp(final Path tmpdir) throws IOException {
         Files.walkFileTree(tmpdir, new Reaper());

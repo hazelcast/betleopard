@@ -7,7 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- *
+ * A simple domain object that describes a user, ie a person placing a bet.
  * Like other domain objects, it is immutable and {@code JSONSerializable}
  *
  * @author kittylyst

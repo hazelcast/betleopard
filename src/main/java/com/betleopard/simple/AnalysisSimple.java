@@ -14,7 +14,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- *
+ * Sinplest example for getting started - uses Java 8 collections but not
+ * Hazlecast IMDG or Spark.
+ * 
  * @author kittylyst
  */
 public class AnalysisSimple {

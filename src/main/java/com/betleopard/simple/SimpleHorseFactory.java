@@ -4,7 +4,8 @@ import com.betleopard.domain.Horse;
 import java.util.Collection;
 
 /**
- *
+ * Extends the simple {@code Horse} factory with lookup-by-name functionality
+ * 
  * @author kittylyst
  */
 public final class SimpleHorseFactory extends SimpleFactory<Horse> {

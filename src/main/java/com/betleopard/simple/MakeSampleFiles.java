@@ -23,7 +23,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- *
+ * Helper tool to create historical JSON data file from the provided CSV
+ * 
  * @author kittylyst
  */
 public final class MakeSampleFiles {

@@ -5,7 +5,7 @@ package com.betleopard;
  * pluggable implementations (including Hazelcast, simple Java 8, Spark)
  * 
  * @author kittylyst
- * @param <T>
+ * @param <T>        the domain type to be built
  */
 public interface DomainFactory<T> {
     
