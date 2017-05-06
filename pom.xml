@@ -13,7 +13,7 @@
         <junit.version>4.12</junit.version>
         <spark-core.version>1.6.1</spark-core.version>
         <hazelcast.version>3.8</hazelcast.version>
-        <hazelcast-spark.version>0.1</hazelcast-spark.version>
+        <hazelcast-spark.version>0.2</hazelcast-spark.version>
         <hazelcast-jet.version>0.3</hazelcast-jet.version>
         <jackson.version>2.8.4</jackson.version>
     </properties>
@@ -33,6 +33,11 @@
         <dependency>
             <groupId>com.hazelcast</groupId>
             <artifactId>hazelcast</artifactId>
+            <version>${hazelcast.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.hazelcast</groupId>
+            <artifactId>hazelcast-client</artifactId>
             <version>${hazelcast.version}</version>
         </dependency>
         <dependency>
