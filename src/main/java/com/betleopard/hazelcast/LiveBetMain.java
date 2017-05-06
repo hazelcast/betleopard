@@ -147,7 +147,7 @@ public class LiveBetMain {
                         bs.add(b);
                         out.add(new Tuple2<>(l.getRace(), bs));
                     }
-                    return out;
+                    return out.iterator();
                 }).reduceByKey((s1, s2) -> {
                     s1.addAll(s2);
                     return s1;
