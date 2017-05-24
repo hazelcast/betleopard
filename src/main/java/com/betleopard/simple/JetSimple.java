@@ -48,6 +48,10 @@ public class JetSimple {
         try {
             main.go();
             final Map<Horse, Long> multiple = main.getResults();
+            System.out.println("Result set size: "+ multiple.size());
+            for (Horse h : multiple.keySet()) {
+                System.out.println(h +" : "+ multiple.get(h));
+            }
         } finally {
             Jet.shutdownAll();
         }
@@ -89,7 +93,7 @@ public class JetSimple {
         System.out.print("\nStarting up... ");
         long start = System.nanoTime();
         jet.newJob(buildDag()).execute().get();
-        System.out.print("done in " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + " milliseconds.");
+        System.out.println("done in " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + " milliseconds.");
     }
 
     public Map<Horse, Long> getResults() {

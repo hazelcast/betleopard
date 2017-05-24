@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  */
 public class AnalysisSimple {
 
-    public final static String HISTORICAL = "historical_races.json";
+    public final static String HISTORICAL = "/historical_races.json";
     public final static Function<Event, Horse> FIRST_PAST_THE_POST = e -> e.getRaces().get(0).getWinner().orElse(Horse.PALE);
     public final static Function<Map.Entry<Horse, ?>, Horse> UNDER_1 = entry -> entry.getKey();
     public final static Function<Map.Entry<Horse, Integer>, Integer> UNDER_2 = entry -> entry.getValue();
