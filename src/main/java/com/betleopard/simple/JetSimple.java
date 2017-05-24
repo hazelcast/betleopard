@@ -6,13 +6,11 @@ import com.betleopard.domain.Event;
 import com.betleopard.domain.Horse;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.core.IMap;
-import com.hazelcast.jet.DAG;
+import com.hazelcast.jet.*;
 import static com.hazelcast.jet.Edge.between;
-import com.hazelcast.jet.Jet;
-import com.hazelcast.jet.JetInstance;
+import static com.hazelcast.jet.KeyExtractors.entryKey;
 import static com.hazelcast.jet.Processors.readMap;
 import static com.hazelcast.jet.Processors.writeMap;
-import com.hazelcast.jet.Vertex;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -26,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import static com.hazelcast.jet.Processors.map;
-import static com.hazelcast.jet.Processors.groupAndCollect;
+import static com.hazelcast.jet.Processors.groupAndAccumulate;
 import static com.hazelcast.jet.Util.entry;
 import java.util.Map.Entry;
 
@@ -46,6 +44,7 @@ public class JetSimple {
     private final static Function<Event, Horse> FIRST_PAST_THE_POST = e -> e.getRaces().get(0).getWinner().orElse(Horse.PALE);
     private final static Function<Map.Entry<Horse, ?>, Horse> UNDER_1 = entry -> entry.getKey();
     private final static Function<Map.Entry<Horse, Integer>, Integer> UNDER_2 = entry -> entry.getValue();
+    private final static Distributed.Supplier<Long> INITIAL_ZERO = () -> 0L;
 
     private JetInstance jet;
 
@@ -95,20 +94,30 @@ public class JetSimple {
         final DAG dag = new DAG();
 
         final Vertex source = dag.newVertex("source", readMap(EVENTS_BY_NAME));
-        // Take in a (NAME, EVENT) return an (EVENT, HORSE)
+        
+        // Take in a (NAME, EVENT) return an (HORSE, EVENT)
         final Vertex winners = dag.newVertex("winners", map((Entry<String, Event> e) -> {
             Event evt = e.getValue();
-            return entry(evt, FIRST_PAST_THE_POST.apply(evt));
+            return entry(FIRST_PAST_THE_POST.apply(evt), evt);
         }));
-        // Invert to (HORSE, Set<EVENTS>) - how many events has this horse won?
-        // use groupAndCollect() ?
-//        final Vertex inverted = dag.newVertex("inverted", groupAndCollect(Entry<Event, Horse> e -> e -> e.getValue(),
-//        ));
         
+        // How many events has this horse won? Use groupAndCollect() to reduce
+        final Vertex count = dag.newVertex("reduce", groupAndAccumulate(INITIAL_ZERO, (tot, x) -> tot + 1));
+        
+        // (HORSE, HORSE) -> (word, count)
+        Vertex combine = dag.newVertex("combine",
+                groupAndAccumulate(Entry<Horse, Long>::getKey, INITIAL_ZERO,
+                        (Long val, Entry<Horse, Long> winCount) -> val + winCount.getValue())
+        );
+
         final Vertex sink = dag.newVertex("sink", writeMap(MULTIPLE));
 
         return dag.edge(between(source.localParallelism(1), winners))
-                .edge(between(winners.localParallelism(1), sink));
+                .edge(between(winners.localParallelism(1), count))
+                .edge(between(count, combine)
+                          .distributed()
+                          .partitioned(entryKey()))
+                  .edge(between(combine, sink));
     }
 
     private void go() throws Exception {
