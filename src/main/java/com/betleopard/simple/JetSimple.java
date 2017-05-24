@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import static com.hazelcast.jet.Processors.map;
+import static com.hazelcast.jet.Processors.groupAndCollect;
 import static com.hazelcast.jet.Util.entry;
 import java.util.Map.Entry;
 
@@ -56,7 +57,7 @@ public class JetSimple {
     }
 
     public void run() throws IOException, URISyntaxException {
-        final Path p = Paths.get(getClass().getClassLoader().getResource("historical_races.json").toURI());
+        final Path p = Paths.get(getClass().getClassLoader().getResource(HISTORICAL).toURI());
         final List<String> eventsText = Files.readAllLines(p);
 
         final List<Event> events
@@ -94,11 +95,16 @@ public class JetSimple {
         final DAG dag = new DAG();
 
         final Vertex source = dag.newVertex("source", readMap(EVENTS_BY_NAME));
+        // Take in a (NAME, EVENT) return an (EVENT, HORSE)
         final Vertex winners = dag.newVertex("winners", map((Entry<String, Event> e) -> {
             Event evt = e.getValue();
             return entry(evt, FIRST_PAST_THE_POST.apply(evt));
         }));
-
+        // Invert to (HORSE, Set<EVENTS>) - how many events has this horse won?
+        // use groupAndCollect() ?
+//        final Vertex inverted = dag.newVertex("inverted", groupAndCollect(Entry<Event, Horse> e -> e -> e.getValue(),
+//        ));
+        
         final Vertex sink = dag.newVertex("sink", writeMap(MULTIPLE));
 
         return dag.edge(between(source.localParallelism(1), winners))

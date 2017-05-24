@@ -21,6 +21,12 @@ import java.util.stream.Collectors;
  */
 public class AnalysisSimple {
 
+    private final static String HISTORICAL = "historical_races.json";
+
+    private final static Function<Event, Horse> FIRST_PAST_THE_POST = e -> e.getRaces().get(0).getWinner().orElse(Horse.PALE);
+    private final static Function<Map.Entry<Horse, ?>, Horse> UNDER_1 = entry -> entry.getKey();
+    private final static Function<Map.Entry<Horse, Integer>, Integer> UNDER_2 = entry -> entry.getValue();
+
     public static void main(String[] args) throws IOException, URISyntaxException {
         CentralFactory.setHorses(SimpleHorseFactory.getInstance());
         CentralFactory.setRaces(new SimpleFactory<>());
@@ -29,7 +35,7 @@ public class AnalysisSimple {
     }
 
     private void run() throws IOException, URISyntaxException {
-        final Path p = Paths.get(getClass().getClassLoader().getResource("historical_races.json").toURI());
+        final Path p = Paths.get(getClass().getClassLoader().getResource(HISTORICAL).toURI());
         final List<String> eventsText = Files.readAllLines(p);
 
         final List<Event> events
@@ -37,10 +43,9 @@ public class AnalysisSimple {
                 .map(s -> JSONSerializable.parse(s, Event::parseBag))
                 .collect(Collectors.toList());
 
-        final Function<Event, Horse> fptp = e -> e.getRaces().get(0).getWinner().orElse(Horse.PALE);
         final Map<Event, Horse> winners
                 = events.stream()
-                .collect(Collectors.toMap(Function.identity(), fptp));
+                .collect(Collectors.toMap(Function.identity(), FIRST_PAST_THE_POST));
 
         final Map<Horse, Set<Event>> inverted = new HashMap<>();
         for (Map.Entry<Event, Horse> entry : winners.entrySet()) {
@@ -50,17 +55,15 @@ public class AnalysisSimple {
             inverted.get(entry.getValue()).add(entry.getKey());
         }
 
-        final Function<Map.Entry<Horse, ?>, Horse> under1 = entry -> entry.getKey();
-        final Function<Map.Entry<Horse, Integer>, Integer> under2 = entry -> entry.getValue();
         final Function<Map.Entry<Horse, Set<Event>>, Integer> setCount = entry -> entry.getValue().size();
         final Map<Horse, Integer> withWinCount
                 = inverted.entrySet().stream()
-                .collect(Collectors.toMap(under1, setCount));
+                .collect(Collectors.toMap(UNDER_1, setCount));
 
         final Map<Horse, Integer> multipleWinners
                 = withWinCount.entrySet().stream()
                 .filter(entry -> entry.getValue() > 1)
-                .collect(Collectors.toMap(under1, under2));
+                .collect(Collectors.toMap(UNDER_1, UNDER_2));
 
         System.out.println("Multiple Winners from List :");
         System.out.println(multipleWinners);
