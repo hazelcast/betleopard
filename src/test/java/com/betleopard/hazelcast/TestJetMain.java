@@ -8,6 +8,7 @@ import static com.betleopard.hazelcast.JetBetMain.WORST_ID;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.jet.Jet;
 import com.hazelcast.jet.JetInstance;
+import com.hazelcast.jet.stream.IStreamMap;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -50,7 +51,12 @@ public class TestJetMain {
         assertNotNull(b);
         try {
             jet.newJob(JetBetMain.buildDag()).execute().get();
-            jet.getMap(WORST_ID);
+            IStreamMap<String, ?> ism = jet.getMap(WORST_ID);
+            System.out.println(ism);
+            System.out.println("Size: "+ ism.size());
+            for (String s : ism.keySet()) {
+                System.out.println(s + " : " + ism.get(s));
+            }
         } finally {
             Jet.shutdownAll();
         }
@@ -76,7 +82,7 @@ public class TestJetMain {
 
         BetBuilder bb = CentralFactory.betOf();
         Leg l = new Leg(r, r.findRunnerByID(0), OddsType.FIXED_ODDS, 2.0);
-        
+
         return bb.stake(2).addLeg(l).build();
     }
 
