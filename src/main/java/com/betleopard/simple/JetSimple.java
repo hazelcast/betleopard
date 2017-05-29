@@ -19,6 +19,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import static com.hazelcast.jet.Processors.map;
 import static com.hazelcast.jet.Processors.groupAndAccumulate;
+import static com.hazelcast.jet.Processors.groupAndCollect;
 import static com.hazelcast.jet.Processors.filter;
 import static com.hazelcast.jet.Util.entry;
 
@@ -38,6 +39,8 @@ public class JetSimple {
 
     private final static Distributed.Supplier<Long> INITIAL_ZERO = () -> 0L;
 
+    private final static Distributed.Function<Entry<String, Event>, Horse> HORSE_FROM_EVENT = e -> FIRST_PAST_THE_POST.apply(e.getValue());
+
     private JetInstance jet;
 
     public static void main(String[] args) throws Exception {
@@ -48,10 +51,11 @@ public class JetSimple {
         try {
             main.go();
             final Map<Horse, Long> multiple = main.getResults();
-            System.out.println("Result set size: "+ multiple.size());
+            System.out.println("Result set size: " + multiple.size());
             for (Horse h : multiple.keySet()) {
-                System.out.println(h +" : "+ multiple.get(h));
+                System.out.println(h + " : " + multiple.get(h));
             }
+
         } finally {
             Jet.shutdownAll();
         }
@@ -62,31 +66,24 @@ public class JetSimple {
 
         final Vertex source = dag.newVertex("source", readMap(EVENTS_BY_NAME));
 
-        // Take in a (NAME, EVENT) return an (HORSE, EVENT)
-        final Vertex winners = dag.newVertex("winners", map((Entry<String, Event> e) -> {
-            Event evt = e.getValue();
-            return entry(FIRST_PAST_THE_POST.apply(evt), evt);
-        }));
-
         // How many events has this horse won? Use groupAndCollect() to reduce
-        final Vertex count = dag.newVertex("reduce", groupAndAccumulate(INITIAL_ZERO, (tot, x) -> tot + 1));
+        final Vertex count = dag.newVertex("reduce", groupAndAccumulate(HORSE_FROM_EVENT, INITIAL_ZERO, (tot, x) -> tot + 1));
 
-        // (HORSE, HORSE) -> (word, count)
-        final Vertex combine = dag.newVertex("combine",
-                groupAndAccumulate(Entry<Horse, Long>::getKey, INITIAL_ZERO,
-                        (Long val, Entry<Horse, Long> winsPerHorse) -> val + winsPerHorse.getValue()));
-
+//        // (HORSE, Event) -> ()
+//        final Vertex combine = dag.newVertex("combine",
+//                groupAndAccumulate(Entry<Horse,Long>::getKey, INITIAL_ZERO,
+//                        (Long val, Entry<Horse,Long> winsPerHorse) -> val + winsPerHorse.getValue()));
         final Vertex multiple = dag.newVertex("multiple", filter((Entry<Horse, Long> ent) -> ent.getValue() > 1));
 
         final Vertex sink = dag.newVertex("sink", writeMap(MULTIPLE));
 
-        return dag.edge(between(source.localParallelism(1), winners))
-                .edge(between(winners.localParallelism(1), count))
-                .edge(between(count, combine)
-                        .distributed()
-                        .partitioned(entryKey()))
-                .edge(between(combine, multiple))
-                .edge(between(multiple, sink));
+        return dag.edge(between(source.localParallelism(1), count))
+//                .edge(between(winners.localParallelism(1), count))
+                .edge(between(count, sink));
+//                        .distributed()
+//                        .partitioned(entryKey()))
+//                .edge(between(combine, sink));
+//                .edge(between(multiple, sink));
     }
 
     public void go() throws Exception {
