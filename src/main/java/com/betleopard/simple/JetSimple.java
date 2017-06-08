@@ -41,6 +41,9 @@ public class JetSimple {
 
     private final static Distributed.Function<Entry<String, Event>, Horse> HORSE_FROM_EVENT = e -> FIRST_PAST_THE_POST.apply(e.getValue());
 
+    private final static Distributed.Function<Entry<String, Event>, Long> HORSE_ID_FROM_EVENT = e -> FIRST_PAST_THE_POST.apply(e.getValue()).getID();
+
+    
     private JetInstance jet;
 
     public static void main(String[] args) throws Exception {
@@ -52,8 +55,8 @@ public class JetSimple {
             main.go();
             final Map<Horse, Long> multiple = main.getResults();
             System.out.println("Result set size: " + multiple.size());
-            for (Horse h : multiple.keySet()) {
-                System.out.println(h + " : " + multiple.get(h));
+            for (Object o : multiple.keySet()) {
+                System.out.println(o + " : " + multiple.get(o));
             }
 
         } finally {
@@ -66,24 +69,16 @@ public class JetSimple {
 
         final Vertex source = dag.newVertex("source", readMap(EVENTS_BY_NAME));
 
-        // How many events has this horse won? Use groupAndCollect() to reduce
-        final Vertex count = dag.newVertex("reduce", groupAndAccumulate(HORSE_FROM_EVENT, INITIAL_ZERO, (tot, x) -> tot + 1));
+        // How many events has this horse won? Use groupAndAccumulate() to reduce
+        final Vertex count = dag.newVertex("reduce", groupAndAccumulate(HORSE_ID_FROM_EVENT, INITIAL_ZERO, (tot, x) -> tot + 1));
 
-//        // (HORSE, Event) -> ()
-//        final Vertex combine = dag.newVertex("combine",
-//                groupAndAccumulate(Entry<Horse,Long>::getKey, INITIAL_ZERO,
-//                        (Long val, Entry<Horse,Long> winsPerHorse) -> val + winsPerHorse.getValue()));
-        final Vertex multiple = dag.newVertex("multiple", filter((Entry<Horse, Long> ent) -> ent.getValue() > 1));
+        final Vertex multiple = dag.newVertex("multiple", filter((Entry<Long, Long> ent) -> ent.getValue() > 1));
 
         final Vertex sink = dag.newVertex("sink", writeMap(MULTIPLE));
 
-        return dag.edge(between(source.localParallelism(1), count))
-//                .edge(between(winners.localParallelism(1), count))
-                .edge(between(count, sink));
-//                        .distributed()
-//                        .partitioned(entryKey()))
-//                .edge(between(combine, sink));
-//                .edge(between(multiple, sink));
+        return dag.edge(between(source.localParallelism(1), count).partitioned(HORSE_ID_FROM_EVENT))
+                .edge(between(count, multiple))
+                .edge(between(multiple, sink));
     }
 
     public void go() throws Exception {
