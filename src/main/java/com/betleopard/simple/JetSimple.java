@@ -4,11 +4,9 @@ import com.betleopard.JSONSerializable;
 import com.betleopard.domain.CentralFactory;
 import com.betleopard.domain.Event;
 import com.betleopard.domain.Horse;
-import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.core.IMap;
 import com.hazelcast.jet.*;
 import static com.hazelcast.jet.Edge.between;
-import static com.hazelcast.jet.KeyExtractors.entryKey;
 import static com.hazelcast.jet.Processors.readMap;
 import static com.hazelcast.jet.Processors.writeMap;
 import java.io.BufferedReader;
@@ -17,11 +15,8 @@ import java.io.InputStreamReader;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import static com.hazelcast.jet.Processors.map;
 import static com.hazelcast.jet.Processors.groupAndAccumulate;
-import static com.hazelcast.jet.Processors.groupAndCollect;
 import static com.hazelcast.jet.Processors.filter;
-import static com.hazelcast.jet.Util.entry;
 
 import static com.betleopard.simple.AnalysisSimple.*;
 import java.util.Map.Entry;
@@ -53,10 +48,12 @@ public class JetSimple {
         main.setup();
         try {
             main.go();
-            final Map<Horse, Long> multiple = main.getResults();
+            final Map<Long, Long> multiple = main.getResults();
+            final SimpleHorseFactory fact = SimpleHorseFactory.getInstance();
             System.out.println("Result set size: " + multiple.size());
-            for (Object o : multiple.keySet()) {
-                System.out.println(o + " : " + multiple.get(o));
+            for (Long l : multiple.keySet()) {
+                Horse h = fact.getByID(l);
+                System.out.println(h + " : " + multiple.get(l));
             }
 
         } finally {
@@ -88,14 +85,12 @@ public class JetSimple {
         System.out.println("done in " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + " milliseconds.");
     }
 
-    public Map<Horse, Long> getResults() {
+    public Map<Long, Long> getResults() {
         return jet.getMap(MULTIPLE);
     }
 
     public void setup() {
         jet = Jet.newJetInstance();
-
-        final ClientConfig config = new ClientConfig();
 
         // Prime the map with data from disc
         final IMap<String, Event> name2Event = jet.getMap(EVENTS_BY_NAME);
