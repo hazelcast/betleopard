@@ -1,9 +1,11 @@
-package com.betleopard.simple;
+package com.betleopard.hazelcast;
 
 import com.betleopard.JSONSerializable;
 import com.betleopard.domain.CentralFactory;
 import com.betleopard.domain.Event;
 import com.betleopard.domain.Horse;
+import com.betleopard.simple.SimpleFactory;
+import com.betleopard.simple.SimpleHorseFactory;
 import com.hazelcast.core.IMap;
 import com.hazelcast.jet.*;
 import static com.hazelcast.jet.Edge.between;
@@ -27,8 +29,7 @@ import java.util.Map.Entry;
  * 
  * @author kittylyst
  */
-public class JetSimple {
-
+public class AnalysisJet {
     public final static String EVENTS_BY_NAME = "events_by_name";
     public final static String MULTIPLE = "multiple_winners";
 
@@ -38,13 +39,12 @@ public class JetSimple {
 
     private final static Distributed.Function<Entry<String, Event>, Long> HORSE_ID_FROM_EVENT = e -> FIRST_PAST_THE_POST.apply(e.getValue()).getID();
 
-    
     private JetInstance jet;
 
     public static void main(String[] args) throws Exception {
         CentralFactory.setHorses(SimpleHorseFactory.getInstance());
         CentralFactory.setRaces(new SimpleFactory<>());
-        final JetSimple main = new JetSimple();
+        final AnalysisJet main = new AnalysisJet();
         main.setup();
         try {
             main.go();
@@ -55,15 +55,36 @@ public class JetSimple {
                 Horse h = fact.getByID(l);
                 System.out.println(h + " : " + multiple.get(l));
             }
-
         } finally {
             Jet.shutdownAll();
         }
     }
 
+    public void go() throws Exception {
+        System.out.print("\nStarting up... ");
+        long start = System.nanoTime();
+        jet.newJob(buildDag()).execute().get();
+        System.out.println("done in " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + " milliseconds.");
+    }
+
+    public void setup() {
+        jet = Jet.newJetInstance();
+
+        // Populate the map with data from disc
+        final IMap<String, Event> name2Event = jet.getMap(EVENTS_BY_NAME);
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(AnalysisJet.class.getResourceAsStream(HISTORICAL), UTF_8))) {
+            r.lines().map(l -> JSONSerializable.parse(l, Event::parseBag)).forEach(e -> name2Event.put(e.getName(), e));
+        } catch (IOException iox) {
+            iox.printStackTrace();
+        }
+    }
+
+    public Map<Long, Long> getResults() {
+        return jet.getMap(MULTIPLE);
+    }
+
     public static DAG buildDag() {
         final DAG dag = new DAG();
-
         final Vertex source = dag.newVertex("source", readMap(EVENTS_BY_NAME));
 
         // How many events has this horse won? Use groupAndAccumulate() to reduce
@@ -76,29 +97,6 @@ public class JetSimple {
         return dag.edge(between(source.localParallelism(1), count).partitioned(HORSE_ID_FROM_EVENT))
                 .edge(between(count, multiple))
                 .edge(between(multiple, sink));
-    }
-
-    public void go() throws Exception {
-        System.out.print("\nStarting up... ");
-        long start = System.nanoTime();
-        jet.newJob(buildDag()).execute().get();
-        System.out.println("done in " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + " milliseconds.");
-    }
-
-    public Map<Long, Long> getResults() {
-        return jet.getMap(MULTIPLE);
-    }
-
-    public void setup() {
-        jet = Jet.newJetInstance();
-
-        // Prime the map with data from disc
-        final IMap<String, Event> name2Event = jet.getMap(EVENTS_BY_NAME);
-        try (BufferedReader r = new BufferedReader(new InputStreamReader(JetSimple.class.getResourceAsStream(HISTORICAL), UTF_8))) {
-            r.lines().map(l -> JSONSerializable.parse(l, Event::parseBag)).forEach(e -> name2Event.put(e.getName(), e));
-        } catch (IOException iox) {
-            iox.printStackTrace();
-        }
     }
 
 }
