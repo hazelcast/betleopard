@@ -28,10 +28,6 @@ import scala.Tuple2;
 import static java.time.temporal.TemporalAdjusters.next;
 
 import static com.hazelcast.jet.Edge.between;
-import static com.hazelcast.jet.Processors.flatMap;
-//import static com.hazelcast.jet.Processors.nonCooperative;
-import static com.hazelcast.jet.Processors.readMap;
-import static com.hazelcast.jet.Processors.writeMap;
 import static com.hazelcast.jet.Traversers.traverseIterable;
 import static com.hazelcast.jet.Traversers.traverseStream;
 import static com.hazelcast.jet.Util.entry;

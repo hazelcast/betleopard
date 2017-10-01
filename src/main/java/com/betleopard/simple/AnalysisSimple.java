@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -37,13 +38,14 @@ public class AnalysisSimple {
         final Path p = Paths.get(getClass().getClassLoader().getResource(HISTORICAL).toURI());
         final List<String> eventsText = Files.readAllLines(p);
 
-        final List<Event> events
-                = eventsText.stream()
-                .map(s -> JSONSerializable.parse(s, Event::parseBag))
-                .collect(Collectors.toList());
+//        final List<Event> events
+//                = eventsText.stream()
+//                .map(s -> JSONSerializable.parse(s, Event::parseBag))
+//                .collect(Collectors.toList());
 
         final Map<Event, Horse> winners
-                = events.stream()
+                = eventsText.stream()
+                .map(s -> JSONSerializable.parse(s, Event::parseBag))
                 .collect(Collectors.toMap(Function.identity(), FIRST_PAST_THE_POST));
 
         final Map<Horse, Set<Event>> inverted = new HashMap<>();
