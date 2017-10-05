@@ -54,7 +54,7 @@
         </dependency>
         <dependency>
             <groupId>com.hazelcast.jet</groupId>
-            <artifactId>hazelcast-jet-core</artifactId>
+            <artifactId>hazelcast-jet</artifactId>
             <version>${hazelcast-jet.version}</version>
         </dependency>
         <!-- Jackson XML Processing -->

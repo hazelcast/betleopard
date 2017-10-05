@@ -8,24 +8,18 @@ import com.betleopard.simple.SimpleFactory;
 import com.betleopard.simple.SimpleHorseFactory;
 import com.hazelcast.core.IMap;
 import com.hazelcast.jet.*;
-import static com.hazelcast.jet.Edge.between;
+import static com.hazelcast.jet.aggregate.AggregateOperations.counting;
+import com.hazelcast.jet.function.DistributedSupplier;
+import com.hazelcast.jet.function.DistributedFunction;
+import static com.hazelcast.jet.function.DistributedFunctions.wholeItem;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-
-import static com.betleopard.simple.AnalysisSimple.*;
-import com.hazelcast.jet.function.DistributedFunction;
-import com.hazelcast.jet.function.DistributedSupplier;
-import com.hazelcast.jet.pipeline.ComputeStage;
-import com.hazelcast.jet.pipeline.Pipeline;
-import static com.hazelcast.jet.pipeline.Sinks.writeMap;
-import static com.hazelcast.jet.processor.Processors.filter;
-import static com.hazelcast.jet.processor.SourceProcessors.readMap;
+import java.util.Map;
 import java.util.Map.Entry;
-import static com.hazelcast.jet.pipeline.Sources.streamKafka;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 /**
  * Simple example for getting started - uses Jet adapted from Java 8 
@@ -34,10 +28,14 @@ import static com.hazelcast.jet.pipeline.Sources.streamKafka;
  * @author kittylyst
  */
 public class AnalysisJet {
+
     public final static String EVENTS_BY_NAME = "events_by_name";
     public final static String MULTIPLE = "multiple_winners";
 
     private final static DistributedSupplier<Long> INITIAL_ZERO = () -> 0L;
+
+    public final static String HISTORICAL = "/historical_races.json";
+    public final static Function<Event, Horse> FIRST_PAST_THE_POST = e -> e.getRaces().get(0).getWinner().orElse(Horse.PALE);
 
     private final static DistributedFunction<Entry<String, Event>, Horse> HORSE_FROM_EVENT = e -> FIRST_PAST_THE_POST.apply(e.getValue());
 
@@ -47,11 +45,12 @@ public class AnalysisJet {
         CentralFactory.setHorses(SimpleHorseFactory.getInstance());
         CentralFactory.setRaces(new SimpleFactory<>());
         final AnalysisJet main = new AnalysisJet();
+        
         main.setup();
         try {
             main.go();
             final Map<Horse, Long> multiple = main.getResults();
-            final SimpleHorseFactory fact = SimpleHorseFactory.getInstance();
+//            final SimpleHorseFactory fact = SimpleHorseFactory.getInstance();
             System.out.println("Result set size: " + multiple.size());
             for (Horse h : multiple.keySet()) {
 //                Horse h = fact.getByID(l);
@@ -60,21 +59,6 @@ public class AnalysisJet {
         } finally {
             Jet.shutdownAll();
         }
-    }
-
-    public void go() throws Exception {
-        System.out.print("\nStarting up... ");
-        long start = System.nanoTime();
-        
-        
-        Pipeline p = Pipeline.create();
-        ComputeStage<Entry<String, Long>> c = p.drawFrom(streamKafka());
-//        c.attach(slidingWindow(entryKey(), slidingWindowDef(1, 1), counting()))
-//         .drainTo(Sinks.writeMap("sink"));
-        p.execute(jet);
-        
-        
-        System.out.println("done in " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + " milliseconds.");
     }
 
     public void setup() {
@@ -93,22 +77,29 @@ public class AnalysisJet {
         return jet.getMap(MULTIPLE);
     }
 
-    public static DAG buildDag() {
+    public void go() throws Exception {
+        System.out.print("\nStarting up... ");
+        long start = System.nanoTime();
+
+        Pipeline p = buildPipeline();
+        p.execute(jet);
+
+        System.out.println("done in " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + " milliseconds.");
+    }
+
+    private static com.hazelcast.jet.Pipeline buildPipeline() {
+        final Pipeline p = Pipeline.create();
+        final ComputeStage<Horse> c = p.drawFrom(Sources.<String, Event>readMap(EVENTS_BY_NAME))
+                .map(HORSE_FROM_EVENT);
+  
+        // Compute map server side
+//        final ComputeStage<Horse> c2 = p.drawFrom(Sources.readMap(EVENTS_BY_NAME, t -> true, HORSE_FROM_EVENT));
         
+        final ComputeStage<Entry<Horse, Long>> hl = c.groupBy(wholeItem(), counting())
+                .filter(ent -> ent.getValue() > 1);
         
-        final DAG dag = new DAG();
-        final Vertex source = dag.newVertex("source", readMap(EVENTS_BY_NAME));
-
-        // How many events has this horse won? Use groupAndAccumulate() to reduce
-        final Vertex count = dag.newVertex("reduce", reduce(HORSE_FROM_EVENT, INITIAL_ZERO, (tot, x) -> tot + 1));
-
-        final Vertex multiple = dag.newVertex("multiple", filter((Entry<Long, Long> ent) -> ent.getValue() > 1));
-
-        final Vertex sink = dag.newVertex("sink", writeMap(MULTIPLE));
-
-        return dag.edge(between(source.localParallelism(1), count).partitioned(HORSE_FROM_EVENT))
-                .edge(between(count, multiple))
-                .edge(between(multiple, sink));
+        hl.drainTo(Sinks.writeMap(MULTIPLE));
+        return p;
     }
 
 }

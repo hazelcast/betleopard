@@ -9,6 +9,7 @@ import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.jet.*;
+import com.hazelcast.jet.core.DAG;
 import com.hazelcast.query.Predicate;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -27,12 +28,7 @@ import scala.Tuple2;
 
 import static java.time.temporal.TemporalAdjusters.next;
 
-import static com.hazelcast.jet.Edge.between;
-import static com.hazelcast.jet.Traversers.traverseIterable;
-import static com.hazelcast.jet.Traversers.traverseStream;
-import static com.hazelcast.jet.Util.entry;
 import java.util.Map.Entry;
-import java.util.stream.Stream;
 
 /**
  * The main example driver class. Uses both Hazlecast IMDG and Jet to perform
@@ -104,6 +100,8 @@ public class JetBetMain {
 
     public static Predicate<Long, User> bettingOnSat(final LocalDate thisSat) {
 
+        // JET SERVERSIDE COMPUTE THIS
+        //
         // Does this user have a bet on this Sat?
         final Predicate<Long, User> betOnSat = e -> {
             for (final Bet b : e.getValue().getKnownBets()) {
@@ -220,23 +218,24 @@ public class JetBetMain {
 
     static DAG buildDag() {
         final DAG dag = new DAG();
+        return dag;
 
-        Vertex source = dag.newVertex("source", readMap(USER_ID));
-
-        Vertex scanBets = dag.newVertex("scan-for-bets", flatMap((Entry<?, User> e) -> traverseIterable(e.getValue().getKnownBets())));
-        
-        Vertex racesToBets = dag.newVertex("races-to-bets", flatMap((Bet b) -> {
-            Stream<Leg> sl = b.getLegs().stream();
-            sl.map(l -> entry(l.getRace(), entry(l.getBacking(), b)));
-            // r -> <h, b>
-            return traverseStream(sl);
-        }));
-        
-        Vertex sink = dag.newVertex("sink", writeMap(WORST_ID));
-
-        return dag.edge(between(source.localParallelism(1), scanBets))
-                .edge(between(scanBets.localParallelism(1), racesToBets))
-                .edge(between(racesToBets.localParallelism(1), sink));
+//        Vertex source = dag.newVertex("source", readMap(USER_ID));
+//
+//        Vertex scanBets = dag.newVertex("scan-for-bets", flatMap((Entry<?, User> e) -> traverseIterable(e.getValue().getKnownBets())));
+//        
+//        Vertex racesToBets = dag.newVertex("races-to-bets", flatMap((Bet b) -> {
+//            Stream<Leg> sl = b.getLegs().stream();
+//            sl.map(l -> entry(l.getRace(), entry(l.getBacking(), b)));
+//            // r -> <h, b>
+//            return traverseStream(sl);
+//        }));
+//        
+//        Vertex sink = dag.newVertex("sink", writeMap(WORST_ID));
+//
+//        return dag.edge(between(source.localParallelism(1), scanBets))
+//                .edge(between(scanBets.localParallelism(1), racesToBets))
+//                .edge(between(racesToBets.localParallelism(1), sink));
     }
     
     /* 
