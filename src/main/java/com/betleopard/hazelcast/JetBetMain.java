@@ -1,16 +1,5 @@
 package com.betleopard.hazelcast;
 
-import com.betleopard.JSONSerializable;
-import com.betleopard.domain.*;
-import com.betleopard.Utils;
-import com.betleopard.domain.Race.RaceDetails;
-import com.hazelcast.client.HazelcastClient;
-import com.hazelcast.client.config.ClientConfig;
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IMap;
-import com.hazelcast.jet.*;
-import com.hazelcast.jet.core.DAG;
-import com.hazelcast.query.Predicate;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -21,14 +10,26 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
+
+import static java.time.temporal.TemporalAdjusters.next;
+
+import com.betleopard.JSONSerializable;
+import com.betleopard.domain.*;
+import com.betleopard.Utils;
+import com.betleopard.domain.Race.RaceDetails;
+import com.hazelcast.client.HazelcastClient;
+import com.hazelcast.client.config.ClientConfig;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
+
+import com.hazelcast.jet.*;
+import com.hazelcast.query.Predicate;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import scala.Tuple2;
 
-import static java.time.temporal.TemporalAdjusters.next;
 
-import java.util.Map.Entry;
 
 /**
  * The main example driver class. Uses both Hazlecast IMDG and Jet to perform
@@ -39,10 +40,12 @@ import java.util.Map.Entry;
 public class JetBetMain {
 
     private JetInstance jet;
-    private DAG dag;
-    private volatile boolean shutdown = false;
+    private Pipeline pipeline;
+
     private HazelcastInstance client;
     private Path filePath;
+
+    private volatile boolean shutdown = false;
 
     private final int NUM_USERS = 100;
     public final static String USER_ID = "users";
@@ -65,7 +68,7 @@ public class JetBetMain {
 
     private void init() throws IOException, URISyntaxException {
         jet = Jet.newJetInstance();
-        dag = buildDag();
+        pipeline = buildPipeline();
 
         final ClientConfig config = new ClientConfig();
         client = HazelcastClient.newHazelcastClient(config);
@@ -84,6 +87,8 @@ public class JetBetMain {
      * Main run loop 
      */
     public void run() {
+        // Continuous run...
+        pipeline.execute(jet);
         MAIN:
         while (!shutdown) {
             addSomeSimulatedBets();
@@ -96,6 +101,7 @@ public class JetBetMain {
                 continue MAIN;
             }
         }
+        jet.shutdown();
     }
 
     public static Predicate<Long, User> bettingOnSat(final LocalDate thisSat) {
@@ -122,14 +128,14 @@ public class JetBetMain {
         return betOnSat;
     }
 
-    public static final List<Entry<Race, Entry<Horse, Bet>>> rearraneBet(final Bet b) {
-        final List<Entry<Race, Entry<Horse, Bet>>> out = new ArrayList<>();
-        for (Leg l : b.getLegs()) {
-            
-        }
-        return out;
-    }
-    
+//    public static final List<Entry<Race, Entry<Horse, Bet>>> rearrangeBet(final Bet b) {
+//        final List<Entry<Race, Entry<Horse, Bet>>> out = new ArrayList<>();
+//        for (Leg l : b.getLegs()) {
+//
+//        }
+//        return out;
+//    }
+
     /**
      * Do live recalculation of how much potential loss the house is exposed to
      */
@@ -216,9 +222,8 @@ public class JetBetMain {
         System.out.println("Worst case total losses: " + apocalypse._2);
     }
 
-    static DAG buildDag() {
-        final DAG dag = new DAG();
-        return dag;
+    static Pipeline buildPipeline() {
+        final Pipeline p = Pipeline.create();
 
 //        Vertex source = dag.newVertex("source", readMap(USER_ID));
 //
@@ -236,8 +241,9 @@ public class JetBetMain {
 //        return dag.edge(between(source.localParallelism(1), scanBets))
 //                .edge(between(scanBets.localParallelism(1), racesToBets))
 //                .edge(between(racesToBets.localParallelism(1), sink));
+        return p;
     }
-    
+
     /* 
      * After this point, everything is boilerplate and support methods for the simulation
      * 
@@ -390,6 +396,7 @@ public class JetBetMain {
      * 
      * @throws IOException 
      */
+    // FIXME Rewrite as Jet...
     public void loadHistoricalRaces() throws IOException, URISyntaxException {
         filePath = Utils.unpackDataToTmp("historical_races.json");
 
