@@ -14,7 +14,6 @@
         <spark-core.version>2.1.1</spark-core.version>
         <hazelcast.version>3.9</hazelcast.version>
         <hazelcast-spark.version>0.2</hazelcast-spark.version>
-        <hazelcast-jet.version>0.5-SNAPSHOT</hazelcast-jet.version>
         <jackson.version>2.8.8</jackson.version>
     </properties>
     
@@ -51,11 +50,6 @@
             <groupId>com.hazelcast</groupId>
             <artifactId>hazelcast-spark</artifactId>
             <version>${hazelcast-spark.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.hazelcast.jet</groupId>
-            <artifactId>hazelcast-jet</artifactId>
-            <version>${hazelcast-jet.version}</version>
         </dependency>
         <!-- Jackson XML Processing -->
         <dependency>
