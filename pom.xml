@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com</groupId>
     <artifactId>betleopard</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -12,7 +12,7 @@
         <!-- Library versions -->
         <junit.version>4.12</junit.version>
         <spark-core.version>2.1.1</spark-core.version>
-        <hazelcast.version>3.8.1</hazelcast.version>
+        <hazelcast.version>3.9</hazelcast.version>
         <hazelcast-spark.version>0.2</hazelcast-spark.version>
         <hazelcast-jet.version>0.5-SNAPSHOT</hazelcast-jet.version>
         <jackson.version>2.8.8</jackson.version>
