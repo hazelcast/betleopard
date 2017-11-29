@@ -12,6 +12,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import static java.util.function.Function.identity;
 import java.util.stream.Collectors;
+import static java.util.stream.Collectors.toSet;
 
 /**
  *
@@ -97,15 +98,7 @@ public interface RandomSimulationUtils {
      * @return 
      */
     public static Set<Horse> makeRunners(final Set<Horse> horses, int num) {
-        if (horses.size() < num) {
-            return horses;
-        }
-        final Set<Horse> out = new HashSet<>();
-        final Iterator<Horse> it = horses.iterator();
-        for (int i = 0; i < num; i++) {
-            out.add(it.next());
-        }
-        return out;
+        return horses.stream().limit(num).collect(toSet());
     }
 
     /**
