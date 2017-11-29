@@ -15,7 +15,7 @@ public final class SimpleHorseFactory extends SimpleFactory<Horse> {
     private SimpleHorseFactory() {
     }
 
-    public static SimpleFactory<Horse> getInstance() {
+    public static SimpleHorseFactory getInstance() {
         return instance;
     }
     
