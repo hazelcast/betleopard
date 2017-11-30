@@ -1,9 +1,5 @@
 package com.betleopard.hazelcast;
 
-import static com.betleopard.Utils.getRandomHorse;
-import static com.betleopard.Utils.getRandomRace;
-import static com.betleopard.Utils.makeRunners;
-import static com.betleopard.Utils.makeSimulatedOdds;
 import com.betleopard.domain.*;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
@@ -13,6 +9,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import static java.util.function.Function.identity;
+import java.util.stream.Collectors;
+import static java.util.stream.Collectors.toSet;
 
 /**
  *
@@ -23,7 +23,6 @@ public interface RandomSimulationUtils {
     public static final int NUM_USERS = 100;
 
     public HazelcastInstance getClient();
-
     /**
      * Set up an event to hang the bets off  
      */
@@ -88,6 +87,58 @@ public interface RandomSimulationUtils {
             betCount += u.getKnownBets().size();
         }
         System.out.println("Total Bets: " + betCount);
+    }
+
+    /**
+     * Utility method to get some horses for simulated races
+     * 
+     * @param horses
+     * @param num
+     * @return 
+     */
+    public static Set<Horse> makeRunners(final Set<Horse> horses, int num) {
+        return horses.stream().limit(num).collect(toSet());
+    }
+
+    /**
+     * Create some simulated odds for this set of runners
+     * 
+     * @param runners
+     * @return 
+     */
+    public static Map<Horse, Double> makeSimulatedOdds(final Set<Horse> runners) {
+        final AtomicInteger count = new AtomicInteger(1);
+        return runners.stream()
+                .limit(4)
+                .collect(Collectors.toMap(identity(), h -> Math.random() * count.getAndIncrement()));
+
+    }
+
+    /**
+     * Return a {@code Race} at random from the provided set
+     * 
+     * @param eventsByID
+     * @return 
+     */
+    public static Race getRandomRace(final IMap<Long, Event> eventsByID) {
+        final List<Event> events = new ArrayList<>(eventsByID.values());
+        final int rI = new Random().nextInt(events.size());
+        final Event theDay = events.get(rI);
+        final List<Race> races = theDay.getRaces();
+        final int rR = new Random().nextInt(races.size());
+        return races.get(rR);
+    }
+
+    /**
+     * Return a random horse from the set of runners in the provided {@code Race}
+     * 
+     * @param r
+     * @return 
+     */
+    public static Horse getRandomHorse(final Race r) {
+        final List<Horse> geegees = new ArrayList<>(r.getCurrentVersion().getRunners());
+        final int rH = new Random().nextInt(geegees.size());
+        return geegees.get(rH);
     }
 
     /**
