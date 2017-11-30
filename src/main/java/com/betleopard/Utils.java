@@ -61,9 +61,9 @@ public final class Utils {
                 continue;
             for (final Bet b : atStake) {
                 // Avoid dealing with ackers for now:
-                if (b.getLegs().size() > 1) {
+                if (!b.single()) 
                     continue;
-                }
+                
                 runningTotal += b.projectedPayout(h);
             }
             if (runningTotal > out._2) {

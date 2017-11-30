@@ -44,6 +44,10 @@ public final class Bet implements JSONSerializable {
         return type;
     }
 
+    public boolean single() {
+        return legs.size() == 1;
+    }
+    
     private Bet(BetBuilder bb) {
         id = bb.id;
         stake = bb.stake;
