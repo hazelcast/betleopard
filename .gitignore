@@ -11,3 +11,7 @@ foo*
 *.jar
 **/Scratch*.java
 *.ser
+
+# IDEA files
+.idea
+*.iml
