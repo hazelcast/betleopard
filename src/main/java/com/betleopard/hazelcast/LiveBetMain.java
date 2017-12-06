@@ -199,10 +199,6 @@ public class LiveBetMain implements RandomSimulationUtils {
         System.out.println("Worst case total losses: " + apocalypse._2);
     }
 
-    /* 
-     * After this point, everything is boilerplate and support methods for the simulation
-     * 
-     */
     /**
      * Loads in historical data and stores in Hazelcast IMDG. This is mostly to 
      * provide a source of horses for the bet simulation.
