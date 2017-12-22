@@ -10,7 +10,7 @@ package com.betleopard;
 public interface DomainFactory<T> {
     
     /**
-     * The factory implictly expects lookup by an ID field to be possible
+     * The factory implicitly expects lookup by an ID field to be possible
      * 
      * @param ID the ID of the requested object
      * @return   the corresponding object

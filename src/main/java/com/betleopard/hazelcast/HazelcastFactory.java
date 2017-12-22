@@ -16,14 +16,15 @@ import com.hazelcast.core.IMap;
  */
 public class HazelcastFactory<T extends LongIndexed> implements DomainFactory<T> {
 
-    private final HazelcastInstance hz = Hazelcast.newHazelcastInstance();
+    private final HazelcastInstance hz;
 
     // Move to a Hazelcast factory using IAtomicLong
     protected IAtomicLong id;
     protected IMap<Long, T> cache;
     protected String className;
 
-    public HazelcastFactory(final Class<T> classOfT) {
+    public HazelcastFactory(final HazelcastInstance instance, final Class<T> classOfT) {
+        hz = instance;
         cache = hz.getMap("cache-" + classOfT);
         id = hz.getAtomicLong("counter-" + classOfT);
     }

@@ -24,7 +24,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
 
 /**
- * The main example driver class. Uses both Hazlecast IMDG and Spark to perform
+ * The main example driver class. Uses both Hazelcast IMDG and Spark to perform
  * data storage and live analysis of in-running bets.
  *
  * @author kittylyst
@@ -38,13 +38,6 @@ public class LiveBetMain implements RandomSimulationUtils {
     private Path filePath;
 
     public static void main(String[] args) throws IOException {
-        // Initialize the domain object factories with Hazelcast IMDG
-        CentralFactory.setHorses(HazelcastHorseFactory.getInstance());
-        CentralFactory.setRaces(new HazelcastFactory<>(Race.class));
-        CentralFactory.setEvents(new HazelcastFactory<>(Event.class));
-        CentralFactory.setUsers(new HazelcastFactory<>(User.class));
-        CentralFactory.setBets(new HazelcastFactory<>(Bet.class));
-
         final LiveBetMain main = new LiveBetMain();
         main.init();
         main.run();
@@ -59,6 +52,13 @@ public class LiveBetMain implements RandomSimulationUtils {
     private void init() throws IOException {
         final ClientConfig config = new ClientConfig();
         client = HazelcastClient.newHazelcastClient(config);
+
+        // Initialize the domain object factories with Hazelcast IMDG
+        CentralFactory.setHorses(HazelcastHorseFactory.getInstance(client));
+        CentralFactory.setRaces(new HazelcastFactory<>(client, Race.class));
+        CentralFactory.setEvents(new HazelcastFactory<>(client, Event.class));
+        CentralFactory.setUsers(new HazelcastFactory<>(client, User.class));
+        CentralFactory.setBets(new HazelcastFactory<>(client, Bet.class));
 
         final SparkConf conf = new SparkConf()
                 .set("hazelcast.server.addresses", "127.0.0.1:5701")
