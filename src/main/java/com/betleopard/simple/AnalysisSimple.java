@@ -14,8 +14,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Sinplest example for getting started - uses Java 8 collections but not
- * Hazlecast IMDG or Spark.
+ * Simple example for getting started - uses Java 8 collections but not 
+ * Hazelcast IMDG or Spark.
+ *
+ * Analyses a provided static historic dataset and looks for multiple winners
+ * in the provided dataset.
  * 
  * @author kittylyst
  */

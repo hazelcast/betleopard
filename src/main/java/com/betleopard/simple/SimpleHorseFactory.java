@@ -2,6 +2,7 @@ package com.betleopard.simple;
 
 import com.betleopard.domain.Horse;
 import java.util.Collection;
+import java.util.Optional;
 
 /**
  * Extends the simple {@code Horse} factory with lookup-by-name functionality
@@ -22,12 +23,12 @@ public final class SimpleHorseFactory extends SimpleFactory<Horse> {
     @Override
     public Horse getByName(final String name) {
         final Collection<Horse> stud = cache.values();
-        final Horse horse = stud.stream()
+        final Optional<Horse> horse = stud.stream()
                                 .filter(h -> h.getName().equals(name))
-                                .findFirst()
-                                .orElse(null);
-        if (horse != null)
-            return horse;
+                                .findFirst();
+        if (horse.isPresent())
+            return horse.get();
+        
         final Horse newHorse = new Horse(name, id.getAndIncrement());
         cache.put(newHorse.getID(), newHorse);
         return newHorse;

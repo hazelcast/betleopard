@@ -24,12 +24,12 @@ import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
 
 /**
- * The main example driver class. Uses both Hazelcast IMDG and Spark to perform
+ * The main example driver class. Uses Hazelcast APIs backed by Spark to perform
  * data storage and live analysis of in-running bets.
  *
  * @author kittylyst
  */
-public class LiveBetMain implements RandomSimulationUtils {
+public class LiveBetMain implements RandomSimulator {
 
     private HazelcastInstance client;
 
@@ -139,7 +139,10 @@ public class LiveBetMain implements RandomSimulationUtils {
             }
         }
 
+        // Parallelize in Spark
         final JavaRDD<Bet> betRDD = sc.parallelize(bets);
+        
+        // Produce a set of bets per race
         final JavaPairRDD<Race, Set<Bet>> betsByRace
                 = betRDD.flatMapToPair(b -> {
                     final List<Tuple2<Race, Set<Bet>>> out = new ArrayList<>();

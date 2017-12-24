@@ -15,14 +15,17 @@ import java.util.stream.Collectors;
 import static java.util.stream.Collectors.toSet;
 
 /**
+ * Base trait for the main live analysis class. Contains boilerplate methods
+ * for random simulations.
  *
- * @author ben
+ * @author kittylyst
  */
-public interface RandomSimulationUtils {
+public interface RandomSimulator {
 
     public static final int NUM_USERS = 100;
 
     public HazelcastInstance getClient();
+    
     /**
      * Set up an event to hang the bets off  
      */

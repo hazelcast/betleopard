@@ -2,7 +2,6 @@ package com.betleopard.hazelcast;
 
 import com.betleopard.DomainFactory;
 import com.betleopard.LongIndexed;
-import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IAtomicLong;
 import com.hazelcast.core.IMap;
