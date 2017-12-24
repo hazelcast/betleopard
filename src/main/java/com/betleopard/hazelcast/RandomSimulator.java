@@ -25,7 +25,6 @@ public interface RandomSimulator {
     public static final int NUM_USERS = 100;
 
     public HazelcastInstance getClient();
-    
     /**
      * Set up an event to hang the bets off  
      */
