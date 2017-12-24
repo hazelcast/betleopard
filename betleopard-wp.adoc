@@ -1,0 +1,552 @@
+== Introduction to Hazelcast IMDG with Apache Spark
+
+In this white paper we introduce the new Apache Spark connector for Hazelcast IMDG. If
+you are not already familiar with Hazelcast IMDG, you should start by reading the white paper "An Architect's View of Hazelcast" (https://hazelcast.com/resources/architects-view-hazelcast/), as we assume a working knowledge of the main features of the
+Hazelcast technology stack throughout.
+
+=== Executive Summary of Apache Spark
+
+A full discussion of Apache Spark is beyond the scope of this white paper, but for
+the sake of completeness we will begin with a brief summary of Apache Spark's core
+features and intended use cases.
+
+Spark is:
+
+* A general purpose large scale data processing engine
+
+* Fully compatible with Hadoop data
+
+* Capable of running in Hadoop clusters or standalone
+
+* Compatible with all Hadoop InputFormats (including HDFS, Cassandra, Hive and HBase)
+
+* Highly performant on MapReduce / batch processing jobs (easily exceeding Hadoop's performance)
+
+* Capable of processing non-batch workloads (e.g. streaming and some types of machine learning)
+
+* Written in Scala
+
+* Accessible from Java, Scala, Python and R client libraries
+
+This means that Spark is focused on data processing, and is independent of data
+storage - allowing it to make use of HDFS or other Hadoop storage.
+
+One of Sparks most important key concepts is that of a Resilient Distributed Dataset
+(RDD). This abstraction provides both fault-tolerance and parallel access to the data.
+Both key features are a natural fit with Hazelcast IMDG, as they are essential building
+blocks for any performant distributed compute capability.
+
+== Introducing BetLeopard
+
+To motivate and provide context for the Spark connector, we will be working with a
+real example, coded in Java 8. The example application, BetLeopard, is a sports betting
+application that provides a simplified form of betting on horse racing. It can 
+accommodate single bets and accumulators and handles both ante-post and starting
+price bets.
+
+.The BetLeopard
+image::bet-leopard-logo.png[]
+
+The code is available at: https://github.com/hazelcast/betleopard
+
+We will first introduce the domain model, then show how it can be used to do simple
+analysis - first via Java 8 collections and then an equivalent form in Spark that
+is suitable for larger datasets.
+
+We will then introduce the Hazelcast connector and show how the combination of
+Hazelcast IMDG and Spark allows for advanced capabilities - in this case demonstrated
+by using BetLeopard for highly scalable live betting with real-time risk queries
+through the Spark interface
+
+Let's begin by looking at the domain model for events, races, horses and bets. The
+entity diagram looks like this:
+
+.Simple view of BetLeopard's model of events and races
+image::bet-leopard-model.png[]
+
+The domain classes are all essentially immutable and are found in the package 
+++com.betleopard.domain++ along with a factory class, ++CentralFactory++, which 
+holds factories for creating various domain objects. This is a slightly indirect 
+mechanism, but it allows for both simple stores and more sophisticated Hazelcast IMDG and
+Spark implementations.
+
+Let's start by looking at a simple Java 8 streams approach to analyzing some historical
+races. BetLeopard ships with a set of historical data for 3 of the most famous races
+in the UK - the Cheltenham Gold Cup, the Grand National and the King George VI Cup.
+They are stored in a file as JSON with one event per line and are easily read in
+via the ++Files.readAllLines()++ method.
+
+To begin with, let's convert the lines of JSON to domain objects, and build a simple
+map of event objects mapped to the horse that won each event. Note that in the domain
+model, the winner of a race is modeled as ++Optional++ (to allow BetLeopard to handle
+both past and future races). For this reason, we use the ++getOrElse()++ method to
+avoid exceptions due to missing objects. 
+
+The constant value ++Horse.PALE++ is used as a default value to provide an 
+implementation of the __Damaged Object__ pattern to further promote null safety and 
+defensive coding, in the event that one of the events has no winner (which should
+only happen due to bad input data).
+
+----
+List<Event> events = 
+        eventsText.stream()
+                  .map(s -> JSONSerializable.parse(s, Event::parseBlob))
+                  .collect(Collectors.toList());
+
+Function<Event, Horse> fptp = 
+        e -> e.getRaces().get(0).getWinner().orElse(Horse.PALE);
+Map<Event, Horse> winners = 
+        events.stream()
+              .collect(Collectors.toMap(identity(), fptp));
+----
+
+Next, we invert the structure to have horses as the keys, with the values being the set
+of events that each horse won. We use the older imperative style to handle the map
+inversion.
+
+----
+Map<Horse, Set<Event>> inverted = new HashMap<>();
+for (Map.Entry<Event, Horse> entry : winners.entrySet()) {
+    if (inverted.get(entry.getValue()) == null) {
+        inverted.put(entry.getValue(), new HashSet<>());
+    }
+    inverted.get(entry.getValue()).add(entry.getKey());
+}
+----
+
+Finally, we find the horses that won multiple events, and the count of events that
+each horse won. This can be done using Java 8's "slightly functional" streams library:
+
+----
+Function<Map.Entry<Horse, ?>, Horse> under1 = entry -> entry.getKey();
+Function<Map.Entry<Horse, Integer>, Integer> under2 = 
+        entry -> entry.getValue();
+Function<Map.Entry<Horse, Set<Event>>, Integer> setCount = 
+        entry -> entry.getValue().size();
+Map<Horse, Integer> withWinCount = 
+        inverted.entrySet().stream()
+                           .collect(Collectors.toMap(under1, setCount));
+
+Map<Horse, Integer> multipleWinners = 
+        withWinCount.entrySet().stream()
+                    .filter(entry -> entry.getValue() > 1)
+                    .collect(Collectors.toMap(under1, under2));
+
+System.out.println("Multiple Winners from List :");
+System.out.println(multipleWinners);
+----
+
+This example shows that it is possible to use plain Java 8 to handle this type of
+analysis and processing, but it has two major problems:
+
+1. The streams interface has been retrofitted to Java 8 and is rather awkward to work
+with for expressing queries and transformations in a truly functional style.
+
+1. The dataset size is limited to the size of a single JVM (Java Virtual Machine)
+
+For full-size production applications, both of these are significant drawbacks. In
+the rest of this white paper, we will demonstrate how the combination of Hazelcast IMDG
+and Spark can remove both of these barriers and provide a scalable version of
+BetLeopard with a more convenient API for querying.
+
+== Introducing Spark
+
+BetLeopard already depends upon Spark, but for your own applications you need to 
+download it, or add a dependency to it in your pom.xml for Maven applications. The
+version of Spark you need depends upon the version of Scala that you have installed. There are
+versions of Spark for Scala 2.10 and 2.11 - and we recommend that the 2.10 version
+is used. This pairs well with Hazelcast IMDG and Java 8, not least because version 8
+allows the use of lambda expressions when working with Spark.
+
+A sample Maven dependency stanza for Spark looks like this:
+
+----
+<dependency>
+    <groupId>org.apache.spark</groupId>
+    <artifactId>spark-core_2.10</artifactId>
+    <version>1.6.1</version>
+</dependency>
+----
+
+This single dependency brings in a fairly large number of other (i.e. transitive)
+dependencies to be pulled in, so be prepared for Maven to take some time to process
+this new dependency.
+
+As a first example, let's reimplement the Java 8 streams example using the Spark
+API. The code is in the file ++AnalysisSpark.java++ in the package 
+++com.betleopard.hazelcast++. Note that in this example we're still using the simple
+version of the factories - we haven't switched over to the Hazelcast IMDG factories yet.
+
+----
+SparkConf c = new SparkConf();
+c.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer");
+JavaSparkContext sc = new JavaSparkContext("local", "appname", c);
+
+JavaRDD<String> eventsText = sc.textFile("/tmp/historical_races.json");
+JavaRDD<Event> events = 
+        eventsText.map(s -> JSONSerializable.parse(s, Event::parseBlob));
+
+JavaPairRDD<Horse, Set<Event>> winners =
+        events.mapToPair(e -> {
+            Set<Event> evts = new HashSet<>();
+            evts.add(e);
+            Horse h = e.getRaces().get(0).getWinner().orElse(Horse.PALE);
+            return new Tuple2<>(h, evts);
+        });
+----
+
+In the Spark version, we need a little more boilerplate - creating the ++SparkConf++
+instance and configuring it. We then use the ++textFile()++ method to read in the
+historical data from disc. 
+
+We are now working with Spark RDD objects, rather than Java 8 collections or streams
+as previously. These do not implement the standard Java interfaces for some very
+sound reasons:
+
+* Spark predates Java 8 so the streams interfaces were not available
+
+* Java Collections have an implicit assumption that the instances are "materialized"
+and are fully loaded in local memory
+
+The second point shows a slight difference in design philosophy between Hazelcast IMDG and
+Spark. Both technologies need to deal with much larger datasets than will fit within
+a single JVM. However, they choose different approaches to the problem. 
+
+Hazelcast IMDG takes the approach of adhering to the collections interfaces wherever
+possible (so, for example IMap extends ConcurrentMap from ++java.util.concurrent++).
+This has the advantage of familiarity for Java developers new to Hazelcast IMDG and provides
+a straightforward path to adopting the technology. 
+
+In production Hazelcast IMDG clusters, there are multiple JVMs (and usually multiple hosts)
+in use, so the familiar API is actually hiding some network I/O from the developer. 
+This leads to potentially different performance behaviour, as well as the subtle 
+change in semantics caused by the contents of the collection not necessarily being
+stored locally.
+
+Spark, on the other hand, prefers to confront the developer with the fact that they
+are working with a new abstraction that doesn't fit the Java Collections model.
+Partly this is because Spark is itself written in Scala, and the detailed design of
+Java's collections differ substantially from those of Scala.
+
+In particular, Scala's collections have basic functional operations directly
+present on the collection classes themselves, with no need for an intermediate
+abstraction (Java 8's ++Stream++). This small difference makes Scala's collections
+somewhat easier to work with. Other minor, but significant differences, include the
+handling of optional types and the lack of tuples in Java.
+
+----
+JavaPairRDD<Horse, Set<Event>> inverted = 
+        winners.reduceByKey((e1, e2) -> {
+            e1.addAll(e2);
+            return e1;
+        });
+----
+
+Spark's use of Scala's tuples, especially ++Tuple2++ that we have already met, makes
+the handling of map-like types (which Spark calls a ++PairRDD++) much easier. In
+pure Java, we needed to deal with the slightly clumsy inner type ++Map.Entry++,
+but as we can see, the use of ++Tuple2++ can lead to much cleaner and readable code:
+
+----
+JavaPairRDD<Horse, Integer> withWinCount =
+        inverted.mapToPair(t -> new Tuple2<>(t._1, t._2.size()));
+        
+JavaPairRDD<Horse, Integer> multi =
+        withWinCount.filter(t -> t._2 > 1);
+
+System.out.println("Multiple Winners from List :");
+for (Iterator<Tuple2<Horse, Long>> it = multi.toLocalIterator(); it.hasNext();) {
+    Tuple2<Horse, Long> t = (Tuple2<Horse, Long>) it.next();
+    System.out.println(t._1 + ": " + t._2);
+}
+sc.stop();
+----
+
+Note that to output the results, we need to use the ++toLocalIterator()++ method to
+bring the results into a standard Java iterator. 
+
+In the next section, we'll discuss how to bring Hazelcast IMDG into the picture to allow
+objects stored in the data grod to be queried through the Spark API.
+
+== Linking Spark to Hazelcast IMDG
+
+From version 3.7 onwards, Hazelcast IMDG has shipped an open-source connector that allows
+Hazelcast to be used as a storage medium for Spark. This can be added to applications
+via a simple pom.xml stanza:
+
+----
+<dependency>
+    <groupId>com.hazelcast</groupId>
+    <artifactId>hazelcast</artifactId>
+    <version>3.7</version>
+</dependency>
+<dependency>
+    <groupId>com.hazelcast</groupId>
+    <artifactId>hazelcast-spark</artifactId>
+    <version>0.1</version>
+</dependency>
+----
+
+With these dependencies, let's consider how to use BetLeopard to produce a system
+that provides:
+
+* A bet engine that scales across multiple JVMs with sharding of events via Hazelcast IMDG
+partitions.
+
+* A query engine that uses Spark to provide real-time risk and analytics of future
+events
+
+Central to our discussion is the subject of Java serialization. Both Hazelcast IMDG and
+Spark require data to be serializable for storage. Spark has a pluggable engine,
+whereas Hazelcast IMDG usually uses default Java serialization (but can be configured to use non-default serialization instead).
+
+This last point causes a minor difficulty - BetLeopard needs to model both past and
+future events, but future races are modelled with the winner as an ++Optional<Horse>++
+field to allow us to talk about races that haven't finished yet. Likewise, bets may
+be laid as "Starting Price", which means that they have indeterminate odds (as the
+odds on the bet are not known until the race starts), and so the ++Leg++ class also
+contains optional fields (the stake on a bet is also potentially unknown until the
+race starts, due to the possibility of accumulator or more complex bet types).
+
+The problem comes from a design decision in the Java 8 language - the ++Optional<T>++ type is not
+considered a full-fledged collection type for storing state (unlike in other languages,
+such as Scala and Haskell) and the developer is encouraged to use it only for the
+return types of methods. Accordingly, it is not serializable by default and we need
+to write some specialized serialization code to work around this language wart.
+
+In our sample application, we want to draw together the separate threads of Spark, Hazelcast and the simple domain model of horse racing and betting. The key class is ++LiveBetMain++ in the package ++com.betleopard.hazelcast++ - this manages both a ++JavaSparkContext++ and a ++HazelcastInstance++ that will work together to produce a simulation of a betting engine that could scale over multiple JVMs, as well as providing a risk modelling function that allows the house to be aware of its potential liabilities (and the results that would cause them).
+
+The main app is started up like this:
+
+----
+public static void main(String[] args) throws IOException {
+    CentralFactory.setHorses(HazelcastHorseFactory.getInstance());
+    CentralFactory.setRaces(new HazelcastFactory<>(Race.class));
+    CentralFactory.setEvents(new HazelcastFactory<>(Event.class));
+    CentralFactory.setUsers(new HazelcastFactory<>(User.class));
+    CentralFactory.setBets(new HazelcastFactory<>(Bet.class));
+
+    LiveBetMain main = new LiveBetMain();
+    main.init();
+    main.run();
+    main.stop();
+}
+----
+
+This initializes the object factories, which in this case are the Hazelcast implementation. Then, it's time to initialize Hazlecast IMDG and Spark, and then set up some data to act as simulated events, races and site users.
+
+----
+private void init() throws IOException {
+    ClientConfig config = new ClientConfig();
+    // Set up Hazelcast config if needed...
+    client = HazelcastClient.newHazelcastClient(config);
+
+    SparkConf conf = // ...
+    sc = new JavaSparkContext("local", "appname", conf);
+
+    loadHistoricalRaces();
+    createRandomUsers();
+    createFutureEvent();
+}
+----
+
+The main part of the program is a simple __While-Not-Shutdown__ loop utilizing a volatile flag to ensure clean shutdown.
+
+----
+public void run() {
+    MAIN:
+    while (!shutdown) {
+        addSomeSimulatedBets();
+        recalculateRiskReports();
+        try {
+            // Simulated delay
+            Thread.sleep(20_000);
+        } catch (InterruptedException ex) {
+            shutdown = true;
+            continue MAIN;
+        }
+    }
+}
+----
+
+This just loops through and adds some more bets, before rerunning the risk reports and sleeping for 30 seconds. The simulated bet generation is very similar to the other setup methods, so instead we will focus on the risk reporting code. 
+
+The first step in determining the risk is to get all of the bets out of Hazelcast IMDG. We define a Hazelcast ++Predicate++ (different from a Java 8 predicate) that will operate on a map entry to decide whether it is needed for processing. In this case, our logical test is whether the user has a bet placed on a race happening next Saturday. This incorporates the standard betting assumption that Saturday is the day with the highest volume and very likely will carry extra risk for the house.
+
+We start by getting all the users out of Hazelcast IMDG. In real betting applications, not all users are considered equal. Some users would be marked out - perhaps by their activity or the financial risk that they have posed to the house in the past. We could use Hazelcast's partition features to model this and to provide extra risk modeling of the risky "wise guy" users.
+
+----
+IMap<Long, User> users = client.getMap("users");
+
+// Does this user have a bet on this Sat?
+LocalDate thisSat = LocalDate.now().with(next(DayOfWeek.SATURDAY));
+Predicate<Long, User> betOnSat = e -> {
+    for (Bet b : e.getValue().getKnownBets()) {
+        INNER:
+        for (Leg l : b.getLegs()) {
+            RaceDetails rd = l.getRace().getCurrentVersion();
+            LocalDate legDate = rd.getRaceTime().toLocalDate();
+            if (legDate.equals(thisSat)) {
+                return true;
+            } else if (legDate.isBefore(thisSat)) {
+                break INNER;
+            }
+        }
+    }
+    return false;
+};
+
+// Read bets that are ordered and happen on Saturday
+List<Bet> bets = new ArrayList<>();
+for (User u : users.values(betOnSat)) {
+    // Construct a map of races -> set of bets
+    for (Bet b : u.getKnownBets()) {
+        BETS:
+        for (Leg l : b.getLegs()) {
+            RaceDetails rd = l.getRace().getCurrentVersion();
+            LocalDate legDate = rd.getRaceTime().toLocalDate();
+            if (legDate.equals(thisSat)) {
+                bets.add(b);
+            } else if (legDate.isBefore(thisSat)) {
+                break BETS;
+            }
+        }
+    }
+}
+----
+
+Now we have extracted the bets from Hazlecast IMDG into a list, the next step is to load them into Spark by turning them into an RDD, and then into a PairRDD. Users who are not familiar with Scala should be aware that as well as Java's view of a map as a lookup table, Scala also considers maps to be lists of key-value pairs that are represented as Tuple2 instances. 
+
+NOTE: Scala also makes a deep connection between maps and partial functions, but this is somewhat outside the scope of this discussion.
+
+Spark's ++PairRDD++ type very much exploits the character of maplike structures as lists of tuples, as can be seen in the following code, that loads the bets into Spark and then creates a view of the bets on a per-race basis, both as a general view, and also with the bets partitioned into a map that is keyed on the horse being backed (so that all the bets backing a particular horse are grouped together).
+
+----
+JavaRDD<Bet> betRDD = sc.parallelize(bets);
+JavaPairRDD<Race, Set<Bet>> betsByRace = 
+        betRDD.flatMapToPair(b -> {
+            List<Tuple2<Race, Set<Bet>>> out = new ArrayList<>();
+            for (Leg l : b.getLegs()) {
+                Set<Bet> bs = new HashSet<>();
+                bs.add(b);
+                out.add(new Tuple2<>(l.getRace(), bs));
+            }
+            return out;
+        }).reduceByKey((s1, s2) -> {
+            s1.addAll(s2);
+            return s1;
+        });
+    
+// For each race, partition the set of bets by the horse they're backing
+JavaPairRDD<Race, Map<Horse, Set<Bet>>> partitionedBets = 
+        betsByRace.mapToPair(t -> {
+            Race r = t._1;
+            Map<Horse, Set<Bet>> p = new HashMap<>();
+            for (Bet b : t._2) {
+                for (Leg l : b.getLegs()) {
+                    if (l.getRace().equals(r)) {
+                        Horse h = l.getBacking();
+                        if (p.get(h) == null) {
+                            p.put(h, new HashSet<>());
+                        }
+                        p.get(h).add(b);
+                    }
+                }
+            }
+            return new Tuple2<>(r, p);
+        });
+----
+
+Before we calculate the house's risk, a small technical aside. We need some helper code - contained in ++Utils.worstCase()++ and an inner class ++Utils.RaceCostComparator++. The code for these is very simple:
+
+----
+public static Tuple2<Horse, Double> worstCase(Map<Horse, Double> odds, Map<Horse, Set<Bet>> partitions) {
+    Set<Horse> runners = odds.keySet();
+    Tuple2<Horse, Double> out = new Tuple2<>(PALE, Double.MIN_VALUE);
+    for (Horse h : runners) {
+        double runningTotal = 0;
+        Set<Bet> atStake = partitions.get(h);
+        if (atStake == null)
+            continue;
+        for (Bet b : atStake) {
+            // Avoid dealing with ackers for now:
+            if (b.getLegs().size() > 1) {
+                continue;
+            }
+            runningTotal += b.projectedPayout(h);
+        }
+        if (runningTotal > out._2) {
+            out = new Tuple2<>(h, runningTotal);
+        }
+    }
+
+    return out;
+}
+----
+
+The code for the comparator class is essentially trivial:
+
+----
+public static class RaceCostComparator implements Comparator<Tuple2<Race, Tuple2<Horse, Double>>>, Serializable {
+    @Override
+    public int compare(Tuple2<Race, Tuple2<Horse, Double>> t1, Tuple2<Race, Tuple2<Horse, Double>> t2) {
+        return t1._2._2.compareTo(t2._2._2);
+    }
+}
+----
+
+The reason for having these helper classes and methods is simple - if we reference a method from within a Spark job then the class that implements that method must itself be serializable. It is much easier to do this using a helper class that is stateless and can trivially be made to implement the ++Serializable++ interface.
+
+With that technical wrinkle addressed, we can finally compute the potential loss if a specific horse wins each race and can come up with a worst case analysis, where the house's losses are maximised across all races.
+
+----
+JavaPairRDD<Race, Tuple2<Horse, Double>> badResults = 
+        partitionedBets.mapToPair(t -> {
+            Race r = t._1;
+            Map<Horse, Double> odds = r.currentOdds();
+            return new Tuple2<>(r, Utils.worstCase(odds, t._2()));
+        });
+
+// Output "perfect storm" combination of 20 results that caused losses
+List<Tuple2<Race, Tuple2<Horse, Double>>> topRisks = 
+        badResults.takeOrdered(20, new Utils.RaceCostComparator());
+
+topRisks.forEach(t -> {
+    System.out.print(t._1 + " won by " + t._2._1);
+    System.out.println(" causes losses of " + t._2._2);
+});
+
+// Finally output the maximum possible loss
+Tuple2<Horse, Double> zero = new Tuple2<>(Horse.PALE, 0.0);
+Tuple2<Horse, Double> apocalypse =
+        badResults.values()
+                  .fold(zero, (t1, t2) -> 
+                        new Tuple2<>(Horse.PALE, t1._2 + t2._2));
+                        
+System.out.println("Worst case total losses: " + apocalypse._2);
+----
+
+This example is relatively straightforward, but it shows the potential that exists when integrating Spark into a Hazelcast IMDG application. The combination of Hazelcast's advanced in-memory compute capabilities and distributed store with Spark's ability to provide powerful query and analytics is formidable. The integration of the two technologies provides a solid basis for the next generation of JVM applications.
+
+== Links to additional Hazelcast IMDG and Spark resources
+
+* Learn about Hazelcast IMDG: “An Architect’s View of Hazelcast” white paper  https://hazelcast.com/resources/architects-view-hazelcast/
+
+* Apache Spark Quickstart http://spark.apache.org/docs/latest/quick-start.html
+
+* Download Hazelcast IMDG and participate in the community:
+http://www.hazelcast.org
+
+* Contribute code or report a bug:
+Hazelcast IMDG GitHub: https://github.com/hazelcast/hazelcast
+
+* Apache Spark Connector for Hazelcast IMDG GitHub: https://github.com/hazelcast/hazelcast-spark
+
+* Join the discussion:
+  - Google Groups https://groups.google.com/forum/#!forum/hazelcast
+  - StackOverflow http://stackoverflow.com/questions/tagged/hazelcast
+
+* Follow us online:
+  - Twitter @Hazelcast https://twitter.com/hazelcast
+  - Facebook https://www.facebook.com/hazelcast/
+  - LinkedIn https://www.linkedin.com/company/hazelcast
