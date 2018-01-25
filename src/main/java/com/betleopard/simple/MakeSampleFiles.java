@@ -38,6 +38,7 @@ public final class MakeSampleFiles {
 
     private final AtomicLong raceCounter = new AtomicLong(1);
 
+    // The major events that we're concerned with
     public enum MajorEvent {
         CHELTENHAM("Cheltenham Gold Cup") {
                     // CGP : 2nd Fri in March
@@ -66,6 +67,7 @@ public final class MakeSampleFiles {
                         .plus(25, ChronoUnit.DAYS);
                     }
                 };
+        
         // Slightly simplified rules for when each race falls - we only have "year" 
         // data and need to generate day level data
         public abstract TemporalAdjuster offsetForRace();

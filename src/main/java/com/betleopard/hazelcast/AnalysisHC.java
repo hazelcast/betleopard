@@ -18,8 +18,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * A simple example driver program to show how to use Hazelcast factories to
- * analyse the provided static data
+ * A driver program (main class) to show how to use Hazelcast factories and API
+ * to analyse the provided historic data
  * 
  * @author kittylyst
  */

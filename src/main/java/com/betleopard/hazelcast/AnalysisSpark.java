@@ -19,8 +19,8 @@ import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
 
 /**
- * A simple example driver program to show how to use Spark to
- * analyse the provided static data
+ * A driver program (main class) to show how to use the Spark core API
+ * to analyse the provided historic data
  *
  * @author kittylyst
  */

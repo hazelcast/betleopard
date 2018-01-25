@@ -11,18 +11,20 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Sinplest example for getting started - uses Java 8 collections but not
- * Hazlecast IMDG or Spark.
+ * Simple example for getting started - uses Java 8 collections but not 
+ * Hazelcast IMDG or Spark.
+ *
+ * Analyses a provided static historic dataset and looks for multiple winners
+ * in the provided dataset.
  * 
  * @author kittylyst
  */
 public class AnalysisSimple {
 
-    public final static String HISTORICAL = "/historical_races.json";
+    public final static String HISTORICAL = "historical_races.json";
     public final static Function<Event, Horse> FIRST_PAST_THE_POST = e -> e.getRaces().get(0).getWinner().orElse(Horse.PALE);
     public final static Function<Map.Entry<Horse, ?>, Horse> UNDER_1 = entry -> entry.getKey();
     public final static Function<Map.Entry<Horse, Integer>, Integer> UNDER_2 = entry -> entry.getValue();
