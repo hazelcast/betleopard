@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com</groupId>
     <artifactId>betleopard</artifactId>
@@ -16,7 +17,15 @@
         <hazelcast-spark.version>0.2</hazelcast-spark.version>
         <jackson.version>2.8.8</jackson.version>
     </properties>
-    
+    <build>
+        <extensions>
+            <extension>
+                <groupId>org.apache.maven.wagon</groupId>
+                <artifactId>wagon-webdav</artifactId>
+                <version>1.0-beta-2</version>
+            </extension>
+        </extensions>
+    </build>
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
@@ -74,4 +83,39 @@
         </dependency>
 
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>private-repository</id>
+            <name>Hazelcast Private Repository</name>
+            <url>https://repository-hazelcast-l337.forge.cloudbees.com/release/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>private-snapshot-repository</id>
+            <name>Hazelcast Private Repository</name>
+            <url>https://repository-hazelcast-l337.forge.cloudbees.com/snapshot/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+    <distributionManagement>
+        <repository>
+            <id>cloudbees-private-repository</id>
+            <url>dav:https://repository-hazelcast-l337.forge.cloudbees.com/release/</url>
+        </repository>
+        <snapshotRepository>
+            <id>cloudbees-private-repository</id>
+            <url>dav:https://repository-hazelcast-l337.forge.cloudbees.com/snapshot/</url>
+        </snapshotRepository>
+    </distributionManagement>
 </project>
