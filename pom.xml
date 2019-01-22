@@ -88,7 +88,7 @@
         <repository>
             <id>private-repository</id>
             <name>Hazelcast Private Repository</name>
-            <url>https://repository-hazelcast-l337.forge.cloudbees.com/release/</url>
+            <url>https://repository.hazelcast.com/release/</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
@@ -99,7 +99,7 @@
         <repository>
             <id>private-snapshot-repository</id>
             <name>Hazelcast Private Repository</name>
-            <url>https://repository-hazelcast-l337.forge.cloudbees.com/snapshot/</url>
+            <url>https://repository.hazelcast.com/snapshot/</url>
             <releases>
                 <enabled>false</enabled>
             </releases>
@@ -110,12 +110,12 @@
     </repositories>
     <distributionManagement>
         <repository>
-            <id>cloudbees-private-repository</id>
-            <url>dav:https://repository-hazelcast-l337.forge.cloudbees.com/release/</url>
+            <id>private-repository</id>
+            <url>https://api.bintray.com/maven/hazelcast/release/betleopard/;publish=1</url>
         </repository>
         <snapshotRepository>
-            <id>cloudbees-private-repository</id>
-            <url>dav:https://repository-hazelcast-l337.forge.cloudbees.com/snapshot/</url>
+            <id>private-repository</id>
+            <url>https://api.bintray.com/maven/hazelcast/snapshot/betleopard/;publish=1</url>
         </snapshotRepository>
     </distributionManagement>
 </project>
