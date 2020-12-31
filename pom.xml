@@ -111,11 +111,11 @@
     <distributionManagement>
         <repository>
             <id>private-repository</id>
-            <url>https://api.bintray.com/maven/hazelcast/release/betleopard/;publish=1</url>
+            <url>https://hazelcast.jfrog.io/artifactory/release</url>
         </repository>
         <snapshotRepository>
             <id>private-repository</id>
-            <url>https://api.bintray.com/maven/hazelcast/snapshot/betleopard/;publish=1</url>
+            <url>https://hazelcast.jfrog.io/artifactory/snapshot</url>
         </snapshotRepository>
     </distributionManagement>
 </project>
